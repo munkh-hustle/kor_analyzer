@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.kor_analyzer"
-    compileSdk = 35
+    compileSdk = 36  // Changed to 36 to match plugin requirements
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -20,8 +20,8 @@ android {
 
     defaultConfig {
         applicationId = "com.example.kor_analyzer"
-        minSdk = flutter.minSdkVersion  // Important: Kiwi requires API level 21+
-        targetSdk = 35
+        minSdk = flutter.minSdkVersion  // Keep at 21 for Kiwi compatibility
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -41,9 +41,9 @@ dependencies {
     // Add the Kiwi AAR file
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar"))))
     
-    // Add Kotlin coroutines for better async handling
+    // Kotlin coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     
-    // Add JSON handling
+    // JSON
     implementation("org.json:json:20240303")
 }

@@ -14,98 +14,133 @@ class KiwiAnalyzer private constructor() {
         private const val TAG = "KiwiAnalyzer"
         private var instance: Kiwi? = null
         private var isInitialized = false
+        private var defaultOption: Kiwi.AnalyzeOption? = null
         
         fun initialize(context: Context) {
-            if (isInitialized) return
+            if (isInitialized) {
+                Log.d(TAG, "Kiwi already initialized")
+                return
+            }
             
             try {
-                // Method 1: Using StreamProvider to read from assets directly (recommended)
-                val streamProvider = KiwiBuilder.StreamProvider { filename ->
-                    try {
-                        // Open model files from assets
-                        context.assets.open("models/kiwi/$filename")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to open $filename from assets", e)
-                        null
-                    }
-                }
+                Log.d(TAG, "Starting Kiwi initialization...")
                 
-                // Build Kiwi instance with the stream provider
-                val builder = KiwiBuilder(streamProvider)
-                instance = builder.build()
+                // Get the default analyze option
+                defaultOption = getDefaultAnalyzeOption()
+                Log.d(TAG, "Default analyze option: $defaultOption")
                 
-                if (instance != null) {
-                    isInitialized = true
-                    Log.d(TAG, "Kiwi initialized successfully from assets")
-                } else {
-                    Log.e(TAG, "Failed to build Kiwi instance")
-                }
-                
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to initialize Kiwi", e)
-                // Fallback: Try copying from assets to files directory
-                tryFallbackInitialization(context)
-            }
-        }
-        
-        private fun tryFallbackInitialization(context: Context) {
-            try {
                 // Copy model files from assets to app storage
                 val modelDir = File(context.filesDir, "kiwi_model")
                 if (!modelDir.exists()) {
                     modelDir.mkdirs()
+                    Log.d(TAG, "Created model directory: ${modelDir.absolutePath}")
                 }
                 
-                val modelFiles = listOf("base.dict", "base.mmap", "base.syn")
+                // Copy all model files
+                val modelFiles = listOf("cong.mdl", "default.dict", "dialect.dict", 
+                                       "extract.mdl", "multi.dict", "nounchr.mdl", 
+                                       "sj.morph", "typo.dict", "combiningRule")
                 
+                var copiedCount = 0
                 for (fileName in modelFiles) {
                     val destFile = File(modelDir, fileName)
                     if (!destFile.exists()) {
-                        context.assets.open("models/kiwi/$fileName").use { inputStream ->
-                            FileOutputStream(destFile).use { outputStream ->
-                                val buffer = ByteArray(1024)
-                                var length: Int
-                                while (inputStream.read(buffer).also { length = it } > 0) {
-                                    outputStream.write(buffer, 0, length)
+                        try {
+                            Log.d(TAG, "Copying $fileName")
+                            context.assets.open("models/kiwi/$fileName").use { inputStream ->
+                                FileOutputStream(destFile).use { outputStream ->
+                                    val buffer = ByteArray(8192)
+                                    var length: Int
+                                    while (inputStream.read(buffer).also { length = it } > 0) {
+                                        outputStream.write(buffer, 0, length)
+                                    }
                                 }
                             }
+                            copiedCount++
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Could not copy $fileName: ${e.message}")
                         }
-                        Log.d(TAG, "Copied $fileName to ${destFile.absolutePath}")
+                    } else {
+                        copiedCount++
                     }
                 }
                 
+                Log.d(TAG, "Copied $copiedCount model files")
+                
                 // Initialize Kiwi with file path
+                Log.d(TAG, "Loading Kiwi from: ${modelDir.absolutePath}")
                 instance = Kiwi.init(modelDir.absolutePath)
                 isInitialized = true
-                Log.d(TAG, "Kiwi initialized successfully from files: ${modelDir.absolutePath}")
+                Log.d(TAG, "✅ Kiwi initialized successfully")
+                
+                // Test analysis
+                testAnalysis()
                 
             } catch (e: Exception) {
-                Log.e(TAG, "Fallback initialization also failed", e)
+                Log.e(TAG, "Failed to initialize Kiwi", e)
                 throw RuntimeException("Kiwi initialization failed", e)
+            }
+        }
+        
+        private fun getDefaultAnalyzeOption(): Kiwi.AnalyzeOption {
+            return try {
+                // Try to get the first enum constant (should be DEFAULT or ALL)
+                val enumClass = Kiwi.AnalyzeOption::class.java
+                enumClass.enumConstants[0]
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to get analyze option", e)
+                throw e
+            }
+        }
+        
+        private fun testAnalysis() {
+            try {
+                if (instance != null && defaultOption != null) {
+                    val testTokens = instance!!.tokenize("테스트", defaultOption)
+                    Log.d(TAG, "Test analysis successful: ${testTokens.size} tokens")
+                    for (token in testTokens) {
+                        Log.d(TAG, "  Token: ${token.form} / ${Kiwi.POSTag.toString(token.tag)}")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Test analysis failed but initialization succeeded", e)
             }
         }
         
         fun analyzeText(text: String): String {
             if (!isInitialized || instance == null) {
-                Log.e(TAG, "Kiwi not initialized")
+                Log.e(TAG, "Kiwi not initialized, cannot analyze text")
                 return JSONArray().toString()
             }
             
             try {
+                Log.d(TAG, "Analyzing text: '$text'")
+                
                 // Split into eojeol (word chunks)
                 val words = text.split(Regex("\\s+")).filter { it.isNotBlank() }
                 val resultsArray = JSONArray()
                 var index = 1
                 
                 for (word in words) {
-                    // Analyze each word using Kiwi's tokenize method
-                    val tokens = instance!!.tokenize(word, Kiwi.Match.allWithNormalizing)
+                    Log.d(TAG, "Analyzing word $index: '$word'")
+                    
+                    // Analyze each word using tokenize with default option
+                    val tokens = if (defaultOption != null) {
+                        instance!!.tokenize(word, defaultOption)
+                    } else {
+                        // This should never happen as we set defaultOption in initialize
+                        val fallbackOption = Kiwi.AnalyzeOption::class.java.enumConstants[0]
+                        instance!!.tokenize(word, fallbackOption)
+                    }
                     
                     val morphemesArray = JSONArray()
                     for (token in tokens) {
+                        val tagString = Kiwi.POSTag.toString(token.tag)
+                        Log.d(TAG, "  Token: ${token.form} / $tagString")
+                        
                         val morphemeObj = JSONObject().apply {
                             put("text", token.form)
-                            put("tag", Kiwi.POSTag.toString(token.tag))
+                            put("tag", tagString)
                         }
                         morphemesArray.put(morphemeObj)
                     }
@@ -120,7 +155,9 @@ class KiwiAnalyzer private constructor() {
                     index++
                 }
                 
-                return resultsArray.toString()
+                val result = resultsArray.toString()
+                Log.d(TAG, "Analysis complete. Found ${index - 1} words")
+                return result
                 
             } catch (e: Exception) {
                 Log.e(TAG, "Analysis error", e)
@@ -128,6 +165,10 @@ class KiwiAnalyzer private constructor() {
             }
         }
         
-        fun isReady(): Boolean = isInitialized
+        fun isReady(): Boolean {
+            val ready = isInitialized && instance != null
+            Log.d(TAG, "isReady: $ready")
+            return ready
+        }
     }
 }

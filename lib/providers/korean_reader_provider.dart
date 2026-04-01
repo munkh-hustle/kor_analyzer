@@ -1,3 +1,4 @@
+// lib/providers/korean_reader_provider.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
@@ -24,17 +25,22 @@ class KoreanReaderProvider extends ChangeNotifier {
 
   Future<void> initialize() async {
     try {
+      print('Checking if Kiwi is ready...');
       final isReady = await _channel.invokeMethod('isReady');
       _isInitialized = isReady == true;
       
       if (!_isInitialized) {
         _errorMessage = 'Kiwi 초기화에 실패했습니다.';
+        print('Kiwi initialization failed');
+      } else {
+        print('Kiwi initialized successfully');
       }
       
       notifyListeners();
     } catch (e) {
       _errorMessage = '초기화 오류: $e';
       _isInitialized = false;
+      print('Initialization error: $e');
       notifyListeners();
     }
   }
@@ -57,11 +63,13 @@ class KoreanReaderProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      print('Analyzing text: $text');
       final String resultsJson = await _channel.invokeMethod(
         'analyzeText',
         {'text': text},
       );
       
+      print('Analysis result: $resultsJson');
       final List<dynamic> resultsList = json.decode(resultsJson);
       final List<AnalysisResult> analysisResults = [];
       
@@ -79,11 +87,14 @@ class KoreanReaderProvider extends ChangeNotifier {
       }
       
       _currentResults = analysisResults;
+      print('Analysis complete. Found ${analysisResults.length} words');
     } on PlatformException catch (e) {
       _errorMessage = '분석 중 오류 발생: ${e.message}';
+      print('Platform exception: ${e.message}');
       _currentResults = [];
     } catch (e) {
       _errorMessage = '분석 중 오류 발생: $e';
+      print('Analysis error: $e');
       _currentResults = [];
     } finally {
       _isAnalyzing = false;
