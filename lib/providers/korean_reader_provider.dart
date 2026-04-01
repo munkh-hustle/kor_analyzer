@@ -1,13 +1,12 @@
-// lib/providers/korean_reader_provider.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_kiwi_nlp/flutter_kiwi_nlp.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
+import 'package:flutter/services.dart';
+import 'dart:convert';
 import '../models/analysis_result.dart';
 import '../services/dictionary_service.dart';
 
 class KoreanReaderProvider extends ChangeNotifier {
-  Kiwi? _kiwi;
+  static const MethodChannel _channel = MethodChannel('korean_reader/kiwi');
+  
   bool _isInitialized = false;
   String _errorMessage = '';
   List<AnalysisResult> _currentResults = [];
@@ -20,46 +19,28 @@ class KoreanReaderProvider extends ChangeNotifier {
   bool get isAnalyzing => _isAnalyzing;
 
   KoreanReaderProvider() {
-    initializeKiwi();
+    initialize();
   }
 
-  Future<void> initializeKiwi() async {
+  Future<void> initialize() async {
     try {
-      _kiwi = Kiwi();
+      final isReady = await _channel.invokeMethod('isReady');
+      _isInitialized = isReady == true;
       
-      // Check if model exists, if not download
-      final modelPath = await _getModelPath();
-      if (!await File(modelPath).exists()) {
-        await _downloadModel();
+      if (!_isInitialized) {
+        _errorMessage = 'Kiwi 초기화에 실패했습니다.';
       }
       
-      await _kiwi!.loadModel(modelPath);
-      _isInitialized = true;
-      _errorMessage = '';
       notifyListeners();
     } catch (e) {
-      _errorMessage = 'Kiwi 초기화 실패: $e';
+      _errorMessage = '초기화 오류: $e';
       _isInitialized = false;
       notifyListeners();
     }
   }
 
-  Future<String> _getModelPath() async {
-    final appDir = await getApplicationDocumentsDirectory();
-    return '${appDir.path}/kiwi_model/base';
-  }
-
-  Future<void> _downloadModel() async {
-    // Download model from GitHub releases
-    // For simplicity, we'll assume model is included in assets
-    // In production, you'd download from: 
-    // https://github.com/bab2min/Kiwi/releases
-    _errorMessage = '모델 파일이 필요합니다. 앱을 다시 설치해주세요.';
-    throw Exception('Model not found');
-  }
-
   Future<void> analyzeText(String text) async {
-    if (!_isInitialized || _kiwi == null) {
+    if (!_isInitialized) {
       _errorMessage = '분석기가 초기화되지 않았습니다.';
       notifyListeners();
       return;
@@ -72,36 +53,35 @@ class KoreanReaderProvider extends ChangeNotifier {
     }
 
     _isAnalyzing = true;
+    _errorMessage = '';
     notifyListeners();
 
     try {
-      // Analyze using Kiwi
-      final analysis = await _kiwi!.analyze(text);
+      final String resultsJson = await _channel.invokeMethod(
+        'analyzeText',
+        {'text': text},
+      );
       
-      // Parse results - Kiwi returns List<List<Morpheme>>
-      final List<AnalysisResult> results = [];
+      final List<dynamic> resultsList = json.decode(resultsJson);
+      final List<AnalysisResult> analysisResults = [];
       
-      // Split into eojeol (word chunks) and analyze
-      final words = text.split(RegExp(r'\s+'));
-      int index = 1;
-      
-      for (var word in words) {
-        final analysis = await _kiwi!.analyze(word);
-        final morphemes = analysis.first; // Take first analysis result
+      for (var result in resultsList) {
+        final morphemes = (result['morphemes'] as List).map((m) => Morpheme(
+          text: m['text'] as String,
+          tag: m['tag'] as String,
+        )).toList();
         
-        results.add(AnalysisResult(
-          index: index,
-          originalForm: word,
-          morphemes: morphemes.map((m) => Morpheme(
-            text: m.form,
-            tag: m.tag,
-          )).toList(),
+        analysisResults.add(AnalysisResult(
+          index: result['index'] as int,
+          originalForm: result['originalForm'] as String,
+          morphemes: morphemes,
         ));
-        index++;
       }
       
-      _currentResults = results;
-      _errorMessage = '';
+      _currentResults = analysisResults;
+    } on PlatformException catch (e) {
+      _errorMessage = '분석 중 오류 발생: ${e.message}';
+      _currentResults = [];
     } catch (e) {
       _errorMessage = '분석 중 오류 발생: $e';
       _currentResults = [];
