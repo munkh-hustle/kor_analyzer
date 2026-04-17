@@ -38,9 +38,3 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-/assets/dictionary data/6_5000_20260319.json
-/assets/dictionary data/7_5000_20260319.json
-/assets/dictionary data/8_5000_20260319.json
-/assets/dictionary data/9_5000_20260319.json
-/assets/dictionary data/10_5000_20260319.json
-/assets/dictionary data/11_5000_20260319.json
