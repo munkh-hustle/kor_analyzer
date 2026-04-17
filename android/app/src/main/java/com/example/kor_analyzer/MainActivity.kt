@@ -9,10 +9,11 @@ import io.flutter.plugin.common.MethodChannel.Result
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "korean_reader/kiwi"
-    
+    private var kiwiInitializing = false
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        
+
         // Initialize Kiwi in background thread to avoid blocking UI
         Thread {
             try {
@@ -24,7 +25,8 @@ class MainActivity : FlutterActivity() {
                 e.printStackTrace()
             }
         }.start()
-        
+        kiwiInitializing = true
+
         // Set up method channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call: MethodCall, result: Result ->
@@ -35,7 +37,7 @@ class MainActivity : FlutterActivity() {
                             result.error("INVALID_ARGUMENT", "Text is required", null)
                             return@setMethodCallHandler
                         }
-                        
+
                         try {
                             val analysisResults = KiwiAnalyzer.analyzeText(text)
                             result.success(analysisResults)
@@ -44,6 +46,19 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                     "isReady" -> {
+                        // Wait for initialization to complete (with timeout)
+                        if (kiwiInitializing && !KiwiAnalyzer.isReady()) {
+                            var waitCount = 0
+                            while (kiwiInitializing && !KiwiAnalyzer.isReady() && waitCount < 50) {
+                                try {
+                                    Thread.sleep(100) // Wait up to 5 seconds
+                                    waitCount++
+                                } catch (e: InterruptedException) {
+                                    break
+                                }
+                            }
+                        }
+                        
                         val ready = KiwiAnalyzer.isReady()
                         println("=== isReady called, returning: $ready ===")
                         if (!ready) {
