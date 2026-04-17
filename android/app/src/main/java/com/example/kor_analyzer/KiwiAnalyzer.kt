@@ -84,11 +84,10 @@ class KiwiAnalyzer private constructor() {
         
         private fun getDefaultAnalyzeOption(): Kiwi.AnalyzeOption {
             return try {
-                // Try to get the first enum constant (should be DEFAULT or ALL)
-                val enumClass = Kiwi.AnalyzeOption::class.java
-                enumClass.enumConstants[0]
+                // Create a new AnalyzeOption instance with default values
+                Kiwi.AnalyzeOption()
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to get analyze option", e)
+                Log.e(TAG, "Failed to create analyze option", e)
                 throw e
             }
         }
@@ -129,7 +128,7 @@ class KiwiAnalyzer private constructor() {
                         instance!!.tokenize(word, defaultOption)
                     } else {
                         // This should never happen as we set defaultOption in initialize
-                        val fallbackOption = Kiwi.AnalyzeOption::class.java.enumConstants[0]
+                        val fallbackOption = Kiwi.AnalyzeOption()
                         instance!!.tokenize(word, fallbackOption)
                     }
                     
