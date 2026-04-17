@@ -2,10 +2,13 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'dart:convert';
 import 'dart:io';
 
 class DictionaryService {
   Database? _database;
+  bool _initialized = false;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -17,11 +20,94 @@ class DictionaryService {
     final directory = await getApplicationDocumentsDirectory();
     final path = join(directory.path, 'korean_dictionary.db');
     
+    // Check if database exists, if not, copy from assets and initialize
+    bool dbExists = await databaseExists(path);
+    
+    if (!dbExists) {
+      // Load dictionary data from JSON asset
+      await _loadDictionaryFromJson(path);
+    }
+    
     return await openDatabase(
       path,
       version: 1,
       onCreate: _createDatabase,
     );
+  }
+
+  Future<void> _loadDictionaryFromJson(String dbPath) async {
+    // Ensure directory exists
+    await Directory(dirname(dbPath)).create(recursive: true);
+    
+    // Create temporary database to insert data
+    Database tempDb = await openDatabase(dbPath, version: 1, onCreate: _createDatabase);
+    
+    // Load JSON from assets
+    String jsonString = await rootBundle.loadString('assets/dictionary_data.json');
+    Map<String, dynamic> jsonData = json.decode(jsonString);
+    
+    // Parse and insert dictionary items
+    if (jsonData.containsKey('channel') && jsonData['channel'].containsKey('item')) {
+      List<dynamic> items = jsonData['channel']['item'];
+      
+      for (var item in items) {
+        try {
+          var wordInfo = item['wordInfo'];
+          var senseInfo = item['senseInfo'];
+          
+          if (wordInfo != null) {
+            String word = wordInfo['org_word'] ?? '';
+            String tag = wordInfo['sp_code_name'] ?? '';
+            
+            // Extract definition from senseInfo
+            String definition = '';
+            String examples = '';
+            
+            if (senseInfo != null) {
+              var senseDataList = senseInfo['senseDataList'];
+              if (senseDataList != null && senseDataList is List && senseDataList.isNotEmpty) {
+                var firstSense = senseDataList[0];
+                
+                // Get definition
+                var definitionData = firstSense['definition'];
+                if (definitionData != null && definitionData is List && definitionData.isNotEmpty) {
+                  definition = definitionData[0]['content'] ?? '';
+                }
+                
+                // Get examples
+                var examList = firstSense['examList'];
+                if (examList != null) {
+                  List<String> exampleTexts = [];
+                  var examList2 = examList['examList2'];
+                  if (examList2 != null && examList2 is List) {
+                    for (var exam in examList2) {
+                      if (exam['example'] != null) {
+                        exampleTexts.add(exam['example']);
+                      }
+                    }
+                  }
+                  examples = exampleTexts.join('\n');
+                }
+              }
+            }
+            
+            // Insert into database if we have a word
+            if (word.isNotEmpty) {
+              await tempDb.insert('dictionary', {
+                'word': word,
+                'tag': tag,
+                'definition': definition,
+                'examples': examples,
+              }, conflictAlgorithm: ConflictAlgorithm.ignore);
+            }
+          }
+        } catch (e) {
+          print('Error processing dictionary item: $e');
+        }
+      }
+    }
+    
+    await tempDb.close();
   }
 
   Future<void> _createDatabase(Database db, int version) async {
@@ -35,8 +121,11 @@ class DictionaryService {
       )
     ''');
     
-    // Insert sample data
-    await _insertSampleData(db);
+    // Note: Dictionary data is now loaded from JSON asset in _loadDictionaryFromJson
+    // Sample data is only inserted if JSON loading fails or for testing
+    if (!_initialized) {
+      await _insertSampleData(db);
+    }
   }
 
   Future<void> _insertSampleData(Database db) async {
