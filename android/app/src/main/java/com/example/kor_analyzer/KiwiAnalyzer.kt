@@ -15,6 +15,9 @@ class KiwiAnalyzer private constructor() {
         private var instance: Kiwi? = null
         private var isInitialized = false
         private var defaultOption: Kiwi.AnalyzeOption? = null
+        private var initializationError: String? = null
+        
+        fun getInitializationError(): String? = initializationError
         
         fun initialize(context: Context) {
             if (isInitialized) {
@@ -88,7 +91,9 @@ class KiwiAnalyzer private constructor() {
                 testAnalysis()
                 
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Failed to initialize Kiwi", e)
+                val errorMsg = "❌ Failed to initialize Kiwi: ${e.message}"
+                Log.e(TAG, errorMsg, e)
+                initializationError = "${e.message ?: "Unknown error"}\n${e.stackTraceToString()}"
                 isInitialized = false
                 instance = null
                 throw RuntimeException("Kiwi initialization failed: ${e.message}", e)
@@ -179,6 +184,13 @@ class KiwiAnalyzer private constructor() {
         
         fun isReady(): Boolean {
             val ready = isInitialized && instance != null
+            if (!ready) {
+                initializationError?.let { error ->
+                    Log.e(TAG, "Kiwi not ready. Error: $error")
+                } ?: run {
+                    Log.e(TAG, "Kiwi not ready. Instance: ${instance != null}, Initialized: $isInitialized")
+                }
+            }
             Log.d(TAG, "isReady: $ready")
             return ready
         }

@@ -32,15 +32,23 @@ class KoreanReaderProvider extends ChangeNotifier {
       if (!_isInitialized) {
         _errorMessage = 'Kiwi 초기화에 실패했습니다.';
         print('Kiwi initialization failed');
+        print('Error details: $_errorMessage');
       } else {
         print('Kiwi initialized successfully');
       }
       
       notifyListeners();
+    } on PlatformException catch (e) {
+      _errorMessage = '초기화 오류: ${e.message ?? e.code}';
+      _isInitialized = false;
+      print('PlatformException during initialization: ${e.code} - ${e.message}');
+      print('Stack trace: ${e.stacktrace}');
+      notifyListeners();
     } catch (e) {
       _errorMessage = '초기화 오류: $e';
       _isInitialized = false;
       print('Initialization error: $e');
+      print('Stack trace: ${StackTrace.current}');
       notifyListeners();
     }
   }
@@ -89,12 +97,14 @@ class KoreanReaderProvider extends ChangeNotifier {
       _currentResults = analysisResults;
       print('Analysis complete. Found ${analysisResults.length} words');
     } on PlatformException catch (e) {
-      _errorMessage = '분석 중 오류 발생: ${e.message}';
-      print('Platform exception: ${e.message}');
+      _errorMessage = '분석 중 오류 발생: ${e.message ?? e.code}';
+      print('PlatformException during analysis: ${e.code} - ${e.message}');
+      print('Stack trace: ${e.stacktrace}');
       _currentResults = [];
     } catch (e) {
       _errorMessage = '분석 중 오류 발생: $e';
       print('Analysis error: $e');
+      print('Stack trace: ${StackTrace.current}');
       _currentResults = [];
     } finally {
       _isAnalyzing = false;

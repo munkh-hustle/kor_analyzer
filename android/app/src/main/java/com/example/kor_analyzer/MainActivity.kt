@@ -44,6 +44,12 @@ class MainActivity : FlutterActivity() {
                     "isReady" -> {
                         val ready = KiwiAnalyzer.isReady()
                         println("=== isReady called, returning: $ready ===")
+                        if (!ready) {
+                            val error = KiwiAnalyzer.getInitializationError()
+                            if (error != null) {
+                                println("=== Initialization error details: $error ===")
+                            }
+                        }
                         result.success(ready)
                     }
                     else -> {
