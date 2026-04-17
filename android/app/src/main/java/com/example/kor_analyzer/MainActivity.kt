@@ -13,15 +13,17 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
-        // Initialize Kiwi
-        try {
-            println("=== Starting Kiwi initialization from MainActivity ===")
-            KiwiAnalyzer.initialize(applicationContext)
-            println("=== Kiwi initialization completed successfully ===")
-        } catch (e: Exception) {
-            println("=== Kiwi initialization FAILED: ${e.message} ===")
-            e.printStackTrace()
-        }
+        // Initialize Kiwi in background thread to avoid blocking UI
+        Thread {
+            try {
+                println("=== Starting Kiwi initialization from MainActivity ===")
+                KiwiAnalyzer.initialize(applicationContext)
+                println("=== Kiwi initialization completed successfully ===")
+            } catch (e: Exception) {
+                println("=== Kiwi initialization FAILED: ${e.message} ===")
+                e.printStackTrace()
+            }
+        }.start()
         
         // Set up method channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
