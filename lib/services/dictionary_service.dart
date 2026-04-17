@@ -42,70 +42,96 @@ class DictionaryService {
     // Create temporary database to insert data
     Database tempDb = await openDatabase(dbPath, version: 1, onCreate: _createDatabase);
     
-    // Load JSON from assets
-    String jsonString = await rootBundle.loadString('assets/dictionary_data.json');
-    Map<String, dynamic> jsonData = json.decode(jsonString);
+    // Load all JSON files from assets/dictionary data/ directory
+    final manifestContent = await rootBundle.loadString('AssetManifest.json');
+    final Map<String, dynamic> manifestMap = json.decode(manifestContent);
     
-    // Parse and insert dictionary items
-    if (jsonData.containsKey('channel') && jsonData['channel'].containsKey('item')) {
-      List<dynamic> items = jsonData['channel']['item'];
-      
-      for (var item in items) {
-        try {
-          var wordInfo = item['wordInfo'];
-          var senseInfo = item['senseInfo'];
+    // Filter for dictionary JSON files
+    final dictionaryFiles = manifestMap.keys.where((key) => 
+      key.startsWith('assets/dictionary data/') && key.endsWith('.json')
+    ).toList();
+    
+    print('Found ${dictionaryFiles.length} dictionary JSON files to load');
+    
+    int totalInserted = 0;
+    
+    for (var filePath in dictionaryFiles) {
+      try {
+        print('Loading: $filePath');
+        String jsonString = await rootBundle.loadString(filePath);
+        Map<String, dynamic> jsonData = json.decode(jsonString);
+        
+        // Parse and insert dictionary items
+        if (jsonData.containsKey('channel') && jsonData['channel'].containsKey('item')) {
+          List<dynamic> items = jsonData['channel']['item'];
+          int fileInserted = 0;
           
-          if (wordInfo != null) {
-            String word = wordInfo['org_word'] ?? '';
-            String tag = wordInfo['sp_code_name'] ?? '';
-            
-            // Extract definition from senseInfo
-            String definition = '';
-            String examples = '';
-            
-            if (senseInfo != null) {
-              var senseDataList = senseInfo['senseDataList'];
-              if (senseDataList != null && senseDataList is List && senseDataList.isNotEmpty) {
-                var firstSense = senseDataList[0];
+          for (var item in items) {
+            try {
+              var wordInfo = item['wordInfo'];
+              var senseInfo = item['senseInfo'];
+              
+              if (wordInfo != null) {
+                String word = wordInfo['org_word'] ?? '';
+                String tag = wordInfo['sp_code_name'] ?? '';
                 
-                // Get definition
-                var definitionData = firstSense['definition'];
-                if (definitionData != null && definitionData is List && definitionData.isNotEmpty) {
-                  definition = definitionData[0]['content'] ?? '';
-                }
+                // Extract definition from senseInfo
+                String definition = '';
+                String examples = '';
                 
-                // Get examples
-                var examList = firstSense['examList'];
-                if (examList != null) {
-                  List<String> exampleTexts = [];
-                  var examList2 = examList['examList2'];
-                  if (examList2 != null && examList2 is List) {
-                    for (var exam in examList2) {
-                      if (exam['example'] != null) {
-                        exampleTexts.add(exam['example']);
+                if (senseInfo != null) {
+                  var senseDataList = senseInfo['senseDataList'];
+                  if (senseDataList != null && senseDataList is List && senseDataList.isNotEmpty) {
+                    var firstSense = senseDataList[0];
+                    
+                    // Get definition
+                    var definitionData = firstSense['definition'];
+                    if (definitionData != null && definitionData is List && definitionData.isNotEmpty) {
+                      definition = definitionData[0]['content'] ?? '';
+                    }
+                    
+                    // Get examples
+                    var examList = firstSense['examList'];
+                    if (examList != null) {
+                      List<String> exampleTexts = [];
+                      var examList2 = examList['examList2'];
+                      if (examList2 != null && examList2 is List) {
+                        for (var exam in examList2) {
+                          if (exam['example'] != null) {
+                            exampleTexts.add(exam['example']);
+                          }
+                        }
                       }
+                      examples = exampleTexts.join('\n');
                     }
                   }
-                  examples = exampleTexts.join('\n');
+                }
+                
+                // Insert into database if we have a word
+                if (word.isNotEmpty) {
+                  await tempDb.insert('dictionary', {
+                    'word': word,
+                    'tag': tag,
+                    'definition': definition,
+                    'examples': examples,
+                  }, conflictAlgorithm: ConflictAlgorithm.ignore);
+                  fileInserted++;
                 }
               }
-            }
-            
-            // Insert into database if we have a word
-            if (word.isNotEmpty) {
-              await tempDb.insert('dictionary', {
-                'word': word,
-                'tag': tag,
-                'definition': definition,
-                'examples': examples,
-              }, conflictAlgorithm: ConflictAlgorithm.ignore);
+            } catch (e) {
+              print('Error processing dictionary item in $filePath: $e');
             }
           }
-        } catch (e) {
-          print('Error processing dictionary item: $e');
+          
+          print('Inserted $fileInserted entries from $filePath');
+          totalInserted += fileInserted;
         }
+      } catch (e) {
+        print('Error loading dictionary file $filePath: $e');
       }
     }
+    
+    print('Total dictionary entries inserted: $totalInserted');
     
     await tempDb.close();
   }
