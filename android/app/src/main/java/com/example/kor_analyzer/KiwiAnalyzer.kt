@@ -27,7 +27,7 @@ class KiwiAnalyzer private constructor() {
                 
                 // Get the default analyze option
                 defaultOption = getDefaultAnalyzeOption()
-                Log.d(TAG, "Default analyze option: $defaultOption")
+                Log.d(TAG, "Default analyze option created successfully")
                 
                 // Copy model files from assets to app storage
                 val modelDir = File(context.filesDir, "kiwi_model")
@@ -42,11 +42,12 @@ class KiwiAnalyzer private constructor() {
                                        "sj.morph", "typo.dict", "combiningRule.txt")
                 
                 var copiedCount = 0
+                var failedCount = 0
                 for (fileName in modelFiles) {
                     val destFile = File(modelDir, fileName)
                     if (!destFile.exists()) {
                         try {
-                            Log.d(TAG, "Copying $fileName")
+                            Log.d(TAG, "Copying $fileName from assets/models/kiwi/")
                             context.assets.open("models/kiwi/$fileName").use { inputStream ->
                                 FileOutputStream(destFile).use { outputStream ->
                                     val buffer = ByteArray(8192)
@@ -57,15 +58,25 @@ class KiwiAnalyzer private constructor() {
                                 }
                             }
                             copiedCount++
+                            Log.d(TAG, "Successfully copied $fileName (${destFile.length()} bytes)")
                         } catch (e: Exception) {
-                            Log.w(TAG, "Could not copy $fileName: ${e.message}")
+                            Log.e(TAG, "ERROR: Could not copy $fileName: ${e.message}", e)
+                            failedCount++
                         }
                     } else {
                         copiedCount++
+                        Log.d(TAG, "File $fileName already exists")
                     }
                 }
                 
-                Log.d(TAG, "Copied $copiedCount model files")
+                Log.d(TAG, "Copied $copiedCount model files, $failedCount failed")
+                
+                // Verify all required files exist
+                val missingFiles = modelFiles.filter { !File(modelDir, it).exists() }
+                if (missingFiles.isNotEmpty()) {
+                    Log.e(TAG, "ERROR: Missing model files: $missingFiles")
+                    throw RuntimeException("Missing model files: $missingFiles")
+                }
                 
                 // Initialize Kiwi with file path
                 Log.d(TAG, "Loading Kiwi from: ${modelDir.absolutePath}")
@@ -77,8 +88,10 @@ class KiwiAnalyzer private constructor() {
                 testAnalysis()
                 
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to initialize Kiwi", e)
-                throw RuntimeException("Kiwi initialization failed", e)
+                Log.e(TAG, "❌ Failed to initialize Kiwi", e)
+                isInitialized = false
+                instance = null
+                throw RuntimeException("Kiwi initialization failed: ${e.message}", e)
             }
         }
         

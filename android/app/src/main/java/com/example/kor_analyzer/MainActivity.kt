@@ -15,8 +15,11 @@ class MainActivity : FlutterActivity() {
         
         // Initialize Kiwi
         try {
+            println("=== Starting Kiwi initialization from MainActivity ===")
             KiwiAnalyzer.initialize(applicationContext)
+            println("=== Kiwi initialization completed successfully ===")
         } catch (e: Exception) {
+            println("=== Kiwi initialization FAILED: ${e.message} ===")
             e.printStackTrace()
         }
         
@@ -39,7 +42,9 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                     "isReady" -> {
-                        result.success(KiwiAnalyzer.isReady())
+                        val ready = KiwiAnalyzer.isReady()
+                        println("=== isReady called, returning: $ready ===")
+                        result.success(ready)
                     }
                     else -> {
                         result.notImplemented()
