@@ -39,7 +39,7 @@ class KiwiAnalyzer private constructor() {
                 // Copy all model files
                 val modelFiles = listOf("cong.mdl", "default.dict", "dialect.dict", 
                                        "extract.mdl", "multi.dict", "nounchr.mdl", 
-                                       "sj.morph", "typo.dict", "combiningRule")
+                                       "sj.morph", "typo.dict", "combiningRule.txt")
                 
                 var copiedCount = 0
                 for (fileName in modelFiles) {
