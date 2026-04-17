@@ -16,3 +16,22 @@ Modified `MainActivity.kt` to:
 
 ### Files Changed
 - `/workspace/android/app/src/main/java/com/example/kor_analyzer/MainActivity.kt`
+
+---
+
+## Issue Fixed: Dictionary Asset Not Found
+
+### Problem
+Error: `Unable to load asset: "assets/dictionary_data.json". The asset does not exist or has empty data.`
+
+### Root Cause
+The `pubspec.yaml` was referencing the dictionary file at `android/app/src/main/assets/dictionary_data.json`, but Flutter's asset system requires files to be in the project root `assets/` directory to be bundled with the app.
+
+### Solution
+1. Created `/workspace/assets/` directory
+2. Copied `dictionary_data.json` from `android/app/src/main/assets/` to `assets/`
+3. Updated `pubspec.yaml` to reference `assets/dictionary_data.json` instead of the Android-specific path
+
+### Files Changed
+- `/workspace/pubspec.yaml` - Updated asset path
+- `/workspace/assets/dictionary_data.json` - Created (copied from Android assets)
