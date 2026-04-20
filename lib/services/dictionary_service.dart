@@ -59,73 +59,20 @@ class DictionaryService {
       try {
         print('Loading: $filePath');
         String jsonString = await rootBundle.loadString(filePath);
-        Map<String, dynamic> jsonData = json.decode(jsonString);
         
-        // Parse and insert dictionary items
-        if (jsonData.containsKey('channel') && jsonData['channel'].containsKey('item')) {
-          List<dynamic> items = jsonData['channel']['item'];
-          int fileInserted = 0;
-          
-          for (var item in items) {
-            try {
-              var wordInfo = item['wordInfo'];
-              var senseInfo = item['senseInfo'];
-              
-              if (wordInfo != null) {
-                String word = wordInfo['org_word'] ?? '';
-                String tag = wordInfo['sp_code_name'] ?? '';
-                
-                // Extract definition from senseInfo
-                String definition = '';
-                String examples = '';
-                
-                if (senseInfo != null) {
-                  var senseDataList = senseInfo['senseDataList'];
-                  if (senseDataList != null && senseDataList is List && senseDataList.isNotEmpty) {
-                    var firstSense = senseDataList[0];
-                    
-                    // Get definition
-                    var definitionData = firstSense['definition'];
-                    if (definitionData != null && definitionData is List && definitionData.isNotEmpty) {
-                      definition = definitionData[0]['content'] ?? '';
-                    }
-                    
-                    // Get examples
-                    var examList = firstSense['examList'];
-                    if (examList != null) {
-                      List<String> exampleTexts = [];
-                      var examList2 = examList['examList2'];
-                      if (examList2 != null && examList2 is List) {
-                        for (var exam in examList2) {
-                          if (exam['example'] != null) {
-                            exampleTexts.add(exam['example']);
-                          }
-                        }
-                      }
-                      examples = exampleTexts.join('\n');
-                    }
-                  }
-                }
-                
-                // Insert into database if we have a word
-                if (word.isNotEmpty) {
-                  await tempDb.insert('dictionary', {
-                    'word': word,
-                    'tag': tag,
-                    'definition': definition,
-                    'examples': examples,
-                  }, conflictAlgorithm: ConflictAlgorithm.ignore);
-                  fileInserted++;
-                }
-              }
-            } catch (e) {
-              print('Error processing dictionary item in $filePath: $e');
-            }
-          }
-          
-          print('Inserted $fileInserted entries from $filePath');
-          totalInserted += fileInserted;
+        // Try to detect JSON format and parse accordingly
+        int fileInserted = 0;
+        
+        if (jsonString.contains('"LexicalResource"')) {
+          // New format: LexicalResource -> Lexicon -> LexicalEntry
+          fileInserted = await _parseLexicalResourceFormat(tempDb, jsonString);
+        } else if (jsonString.contains('"channel"')) {
+          // Old format: channel -> item
+          fileInserted = await _parseChannelFormat(tempDb, jsonString);
         }
+        
+        print('Inserted $fileInserted entries from $filePath');
+        totalInserted += fileInserted;
       } catch (e) {
         print('Error loading dictionary file $filePath: $e');
       }
@@ -134,6 +81,227 @@ class DictionaryService {
     print('Total dictionary entries inserted: $totalInserted');
     
     await tempDb.close();
+  }
+
+  Future<int> _parseLexicalResourceFormat(Database db, String jsonString) async {
+    int inserted = 0;
+    
+    // Parse the JSON manually due to its large size
+    // We'll use a streaming approach to extract LexicalEntry objects
+    final content = jsonString;
+    
+    // Find LexicalEntry array
+    final lexEntryStart = content.indexOf('"LexicalEntry"');
+    if (lexEntryStart == -1) return 0;
+    
+    final arrayStart = content.indexOf('[', lexEntryStart);
+    if (arrayStart == -1) return 0;
+    
+    // Extract entries by finding {"Lemma": patterns
+    int pos = arrayStart + 1;
+    while (pos < content.length) {
+      // Skip whitespace and commas
+      while (pos < content.length && (content[pos] == ' ' || content[pos] == '\n' || content[pos] == '\r' || content[pos] == ',' || content[pos] == '\t')) {
+        pos++;
+      }
+      
+      if (pos >= content.length || content[pos] == ']') break;
+      
+      if (content.substring(pos).startsWith('{"Lemma"')) {
+        // Find the end of this entry
+        int braceCount = 0;
+        int entryStart = pos;
+        int entryEnd = pos;
+        
+        for (int i = pos; i < content.length; i++) {
+          if (content[i] == '{') braceCount++;
+          else if (content[i] == '}') {
+            braceCount--;
+            if (braceCount == 0) {
+              entryEnd = i + 1;
+              break;
+            }
+          }
+        }
+        
+        if (entryEnd > entryStart) {
+          try {
+            final entryStr = content.substring(entryStart, entryEnd);
+            final entry = json.decode(entryStr);
+            
+            // Extract word from Lemma
+            final lemma = entry['Lemma'];
+            if (lemma != null && lemma is Map) {
+              final feat = lemma['feat'];
+              if (feat != null && feat is Map) {
+                final word = feat['val']?.toString() ?? '';
+                
+                if (word.isNotEmpty) {
+                  // Extract Sense information
+                  String tag = '';
+                  String definition = '';
+                  List<String> examples = [];
+                  
+                  final senses = entry['Sense'];
+                  if (senses != null && senses is List && senses.isNotEmpty) {
+                    final sense = senses[0];
+                    if (sense is Map) {
+                      // Get equivalents (translations/definitions in different languages)
+                      final equivalents = sense['Equivalent'];
+                      if (equivalents != null && equivalents is List) {
+                        for (var eq in equivalents) {
+                          if (eq is Map) {
+                            final feats = eq['feat'];
+                            if (feats != null && feats is List) {
+                              String lang = '';
+                              String defText = '';
+                              String lemmaText = '';
+                              
+                              for (var f in feats) {
+                                if (f is Map) {
+                                  if (f['att'] == 'language') {
+                                    lang = f['val']?.toString() ?? '';
+                                  } else if (f['att'] == 'definition') {
+                                    defText = f['val']?.toString() ?? '';
+                                  } else if (f['att'] == 'lemma') {
+                                    lemmaText = f['val']?.toString() ?? '';
+                                  }
+                                }
+                              }
+                              
+                              // Use Korean definition if available, otherwise use first available
+                              if (lang == '한국어' && defText.isNotEmpty) {
+                                definition = defText;
+                              } else if (definition.isEmpty && defText.isNotEmpty) {
+                                // Store first non-Korean definition as fallback
+                                definition = '[$lang] $defText';
+                              }
+                              
+                              // Get tag from Korean entry if available
+                              if (lang == '한국어' && lemmaText.isNotEmpty) {
+                                tag = lemmaText;
+                              }
+                            }
+                          }
+                        }
+                      }
+                      
+                      // Get examples from SenseExample
+                      final senseExamples = sense['SenseExample'];
+                      if (senseExamples != null && senseExamples is List) {
+                        for (var ex in senseExamples) {
+                          if (ex is Map) {
+                            final feats = ex['feat'];
+                            if (feats != null && feats is List) {
+                              for (var f in feats) {
+                                if (f is Map && f['att'] == 'example') {
+                                  final exampleText = f['val']?.toString() ?? '';
+                                  if (exampleText.isNotEmpty) {
+                                    examples.add(exampleText);
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  
+                  // Insert into database
+                  await db.insert('dictionary', {
+                    'word': word,
+                    'tag': tag,
+                    'definition': definition,
+                    'examples': examples.join('\n'),
+                  }, conflictAlgorithm: ConflictAlgorithm.ignore);
+                  inserted++;
+                }
+              }
+            }
+          } catch (e) {
+            // Skip malformed entries
+          }
+          
+          pos = entryEnd;
+        } else {
+          pos++;
+        }
+      } else {
+        pos++;
+      }
+    }
+    
+    return inserted;
+  }
+
+  Future<int> _parseChannelFormat(Database db, String jsonString) async {
+    int inserted = 0;
+    Map<String, dynamic> jsonData = json.decode(jsonString);
+    
+    // Parse and insert dictionary items
+    if (jsonData.containsKey('channel') && jsonData['channel'].containsKey('item')) {
+      List<dynamic> items = jsonData['channel']['item'];
+      
+      for (var item in items) {
+        try {
+          var wordInfo = item['wordInfo'];
+          var senseInfo = item['senseInfo'];
+          
+          if (wordInfo != null) {
+            String word = wordInfo['org_word'] ?? '';
+            String tag = wordInfo['sp_code_name'] ?? '';
+            
+            // Extract definition from senseInfo
+            String definition = '';
+            String examples = '';
+            
+            if (senseInfo != null) {
+              var senseDataList = senseInfo['senseDataList'];
+              if (senseDataList != null && senseDataList is List && senseDataList.isNotEmpty) {
+                var firstSense = senseDataList[0];
+                
+                // Get definition
+                var definitionData = firstSense['definition'];
+                if (definitionData != null && definitionData is List && definitionData.isNotEmpty) {
+                  definition = definitionData[0]['content'] ?? '';
+                }
+                
+                // Get examples
+                var examList = firstSense['examList'];
+                if (examList != null) {
+                  List<String> exampleTexts = [];
+                  var examList2 = examList['examList2'];
+                  if (examList2 != null && examList2 is List) {
+                    for (var exam in examList2) {
+                      if (exam['example'] != null) {
+                        exampleTexts.add(exam['example']);
+                      }
+                    }
+                  }
+                  examples = exampleTexts.join('\n');
+                }
+              }
+            }
+            
+            // Insert into database if we have a word
+            if (word.isNotEmpty) {
+              await db.insert('dictionary', {
+                'word': word,
+                'tag': tag,
+                'definition': definition,
+                'examples': examples,
+              }, conflictAlgorithm: ConflictAlgorithm.ignore);
+              inserted++;
+            }
+          }
+        } catch (e) {
+          print('Error processing dictionary item: $e');
+        }
+      }
+    }
+    
+    return inserted;
   }
 
   Future<void> _createDatabase(Database db, int version) async {
