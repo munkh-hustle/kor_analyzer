@@ -47,15 +47,6 @@ class DictionaryService {
     final allDictionaryFiles = [
       'assets/dictionary data/1_5000_20260319.json',
       'assets/dictionary data/2_5000_20260319.json',
-      'assets/dictionary data/3_5000_20260319.json',
-      'assets/dictionary data/4_5000_20260319.json',
-      'assets/dictionary data/5_5000_20260319.json',
-      'assets/dictionary data/6_5000_20260319.json',
-      'assets/dictionary data/7_5000_20260319.json',
-      'assets/dictionary data/8_5000_20260319.json',
-      'assets/dictionary data/9_5000_20260319.json',
-      'assets/dictionary data/10_5000_20260319.json',
-      'assets/dictionary data/11_3439_20260319.json',
     ];
 
     // Filter to only include files that exist (check by trying to load)
