@@ -190,9 +190,18 @@ class DictionaryService {
                   List<String> examples = [];
                   
                   final senses = entry['Sense'];
-                  if (senses != null && senses is List && senses.isNotEmpty) {
-                    final sense = senses[0];
-                    if (sense is Map) {
+                  if (senses != null) {
+                    // Handle both List and Map types for Sense
+                    List senseList = [];
+                    if (senses is List) {
+                      senseList = senses;
+                    } else if (senses is Map) {
+                      senseList = [senses];
+                    }
+                    
+                    if (senseList.isNotEmpty) {
+                      final sense = senseList[0];
+                      if (sense is Map) {
                       // Get equivalents (translations/definitions in different languages)
                       final equivalents = sense['Equivalent'];
                       if (equivalents != null && equivalents is List) {
@@ -252,8 +261,15 @@ class DictionaryService {
                       
                       // Get examples from SenseExample
                       final senseExamples = sense['SenseExample'];
-                      if (senseExamples != null && senseExamples is List) {
-                        for (var ex in senseExamples) {
+                      if (senseExamples != null) {
+                        List exampleList = [];
+                        if (senseExamples is List) {
+                          exampleList = senseExamples;
+                        } else if (senseExamples is Map) {
+                          exampleList = [senseExamples];
+                        }
+                        
+                        for (var ex in exampleList) {
                           if (ex is Map) {
                             final feats = ex['feat'];
                             if (feats != null && feats is List) {
