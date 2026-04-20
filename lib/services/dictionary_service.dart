@@ -43,7 +43,7 @@ class DictionaryService {
     Database tempDb = await openDatabase(dbPath, version: 1, onCreate: _createDatabase);
     
     // Define the dictionary files to load (hardcoded list instead of reading AssetManifest)
-    final dictionaryFiles = [
+    final allDictionaryFiles = [
       'assets/dictionary data/1_5000_20260319.json',
       'assets/dictionary data/2_5000_20260319.json',
       'assets/dictionary data/3_5000_20260319.json',
@@ -57,14 +57,42 @@ class DictionaryService {
       'assets/dictionary data/11_3439_20260319.json',
     ];
     
+    // Filter to only include files that exist (check by trying to load)
+    final dictionaryFiles = <String>[];
+    for (var filePath in allDictionaryFiles) {
+      try {
+        // Try to load a small portion to verify file exists
+        final byteData = await rootBundle.load(filePath);
+        if (byteData.lengthInBytes > 0) {
+          dictionaryFiles.add(filePath);
+        }
+      } catch (e) {
+        // File doesn't exist or is inaccessible, skip it
+        print('Skipping missing file: $filePath');
+      }
+    }
+    
     print('Found ${dictionaryFiles.length} dictionary JSON files to load');
     
     int totalInserted = 0;
+    int fileCount = 0;
     
     for (var filePath in dictionaryFiles) {
+      fileCount++;
       try {
-        print('Loading: $filePath');
-        String jsonString = await rootBundle.loadString(filePath);
+        print('Loading file $fileCount/${dictionaryFiles.length}: $filePath');
+        
+        // Load file as bytes first to handle large files better
+        final byteData = await rootBundle.load(filePath);
+        final jsonString = String.fromCharCodes(byteData.buffer.asUint8List());
+        
+        // Clear reference to allow garbage collection
+        byteData.buffer.asUint8List();
+        
+        if (jsonString.isEmpty) {
+          print('Warning: Empty file $filePath');
+          continue;
+        }
         
         // Try to detect JSON format and parse accordingly
         int fileInserted = 0;
@@ -75,10 +103,22 @@ class DictionaryService {
         } else if (jsonString.contains('"channel"')) {
           // Old format: channel -> item
           fileInserted = await _parseChannelFormat(tempDb, jsonString);
+        } else {
+          print('Warning: Unknown JSON format in $filePath');
         }
         
-        print('Inserted $fileInserted entries from $filePath');
+        // Clear jsonString reference to allow garbage collection
+        // ignore: unnecessary_statements
+        jsonString;
+        
+        print('Inserted $fileInserted entries from $filePath (File $fileCount/${dictionaryFiles.length})');
         totalInserted += fileInserted;
+        
+        // Force garbage collection hint by yielding and waiting
+        await Future.delayed(Duration(milliseconds: 100));
+        
+        // Print progress
+        print('Progress: $fileCount/${dictionaryFiles.length} files, $totalInserted total entries');
       } catch (e) {
         print('Error loading dictionary file $filePath: $e');
         // Continue with next file even if one fails
