@@ -6,9 +6,26 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'dart:convert';
 import 'dart:io';
 
+class DictionaryLoadingProgress {
+  final int currentFile;
+  final int totalFiles;
+  final int totalEntriesLoaded;
+  final String? currentFileName;
+
+  DictionaryLoadingProgress({
+    required this.currentFile,
+    required this.totalFiles,
+    required this.totalEntriesLoaded,
+    this.currentFileName,
+  });
+
+  double get progress => totalFiles > 0 ? currentFile / totalFiles : 0.0;
+}
+
 class DictionaryService {
   Database? _database;
   bool _initialized = false;
+  Function(DictionaryLoadingProgress)? onProgressUpdate;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -81,7 +98,16 @@ class DictionaryService {
     for (var filePath in dictionaryFiles) {
       fileCount++;
       try {
+        final fileName = filePath.split('/').last;
         print('Loading file $fileCount/${dictionaryFiles.length}: $filePath');
+
+        // Notify progress - starting file
+        onProgressUpdate?.call(DictionaryLoadingProgress(
+          currentFile: fileCount,
+          totalFiles: dictionaryFiles.length,
+          totalEntriesLoaded: totalInserted,
+          currentFileName: fileName,
+        ));
 
         // Load file as bytes first to handle large files better
         final byteData = await rootBundle.load(filePath);
@@ -100,7 +126,17 @@ class DictionaryService {
 
         if (jsonString.contains('"LexicalResource"')) {
           // New format: LexicalResource -> Lexicon -> LexicalEntry
-          fileInserted = await _parseLexicalResourceFormat(tempDb, jsonString);
+          fileInserted = await _parseLexicalResourceFormat(tempDb, jsonString, 
+            (insertedInFile) {
+              // Notify progress during parsing
+              onProgressUpdate?.call(DictionaryLoadingProgress(
+                currentFile: fileCount,
+                totalFiles: dictionaryFiles.length,
+                totalEntriesLoaded: totalInserted + insertedInFile,
+                currentFileName: fileName,
+              ));
+            },
+          );
         } else if (jsonString.contains('"channel"')) {
           // Old format: channel -> item
           fileInserted = await _parseChannelFormat(tempDb, jsonString);
@@ -129,12 +165,20 @@ class DictionaryService {
     }
 
     print('Total dictionary entries inserted: $totalInserted');
+    
+    // Notify completion
+    onProgressUpdate?.call(DictionaryLoadingProgress(
+      currentFile: dictionaryFiles.length,
+      totalFiles: dictionaryFiles.length,
+      totalEntriesLoaded: totalInserted,
+      currentFileName: null,
+    ));
 
     await tempDb.close();
   }
 
   Future<int> _parseLexicalResourceFormat(
-      Database db, String jsonString) async {
+      Database db, String jsonString, [Function(int)? onProgress]) async {
     int inserted = 0;
 
     // Parse the JSON manually due to its large size
@@ -372,6 +416,11 @@ class DictionaryService {
                       },
                       conflictAlgorithm: ConflictAlgorithm.ignore);
                   inserted++;
+                  
+                  // Notify progress every 100 entries to avoid too many callbacks
+                  if (inserted % 100 == 0 && onProgress != null) {
+                    onProgress(inserted);
+                  }
                 }
               }
             }
@@ -391,6 +440,12 @@ class DictionaryService {
     }
 
     print('Finished parsing LexicalResource format. Total inserted: $inserted');
+    
+    // Final progress notification
+    if (onProgress != null) {
+      onProgress(inserted);
+    }
+    
     return inserted;
   }
 

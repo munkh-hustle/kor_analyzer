@@ -13,11 +13,15 @@ class KoreanReaderProvider extends ChangeNotifier {
   List<AnalysisResult> _currentResults = [];
   bool _isAnalyzing = false;
   final DictionaryService _dictionaryService = DictionaryService();
+  DictionaryLoadingProgress? _loadingProgress;
+  bool _isLoadingDictionary = false;
 
   bool get isInitialized => _isInitialized;
   String get errorMessage => _errorMessage;
   List<AnalysisResult> get currentResults => _currentResults;
   bool get isAnalyzing => _isAnalyzing;
+  DictionaryLoadingProgress? get loadingProgress => _loadingProgress;
+  bool get isLoadingDictionary => _isLoadingDictionary;
 
   KoreanReaderProvider() {
     initialize();
@@ -26,6 +30,14 @@ class KoreanReaderProvider extends ChangeNotifier {
   Future<void> initialize() async {
     try {
       print('Checking if Kiwi is ready...');
+      
+      // Set up progress callback for dictionary loading
+      _dictionaryService.onProgressUpdate = (progress) {
+        _loadingProgress = progress;
+        _isLoadingDictionary = progress.currentFile < progress.totalFiles;
+        notifyListeners();
+      };
+      
       final isReady = await _channel.invokeMethod('isReady');
       _isInitialized = isReady == true;
       

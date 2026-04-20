@@ -136,6 +136,52 @@ class _TextInputScreenState extends State<TextInputScreen> {
                   );
                 }
                 
+                // Show dictionary loading progress
+                if (provider.isLoadingDictionary && provider.loadingProgress != null) {
+                  final progress = provider.loadingProgress!;
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 24),
+                        Text(
+                          '사전 로딩 중...',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '파일 ${progress.currentFile}/${progress.totalFiles}',
+                          style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${progress.currentFileName ?? ''}',
+                          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '총 ${progress.totalEntriesLoaded}개 단어 로드됨',
+                          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: 300,
+                          child: LinearProgressIndicator(
+                            value: progress.progress,
+                            minHeight: 8,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${(progress.progress * 100).toStringAsFixed(1)}%',
+                          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                
                 if (provider.isAnalyzing) {
                   return const Center(
                     child: Column(
