@@ -42,14 +42,20 @@ class DictionaryService {
     // Create temporary database to insert data
     Database tempDb = await openDatabase(dbPath, version: 1, onCreate: _createDatabase);
     
-    // Load all JSON files from assets/dictionary data/ directory
-    final manifestContent = await rootBundle.loadString('AssetManifest.json');
-    final Map<String, dynamic> manifestMap = json.decode(manifestContent);
-    
-    // Filter for dictionary JSON files
-    final dictionaryFiles = manifestMap.keys.where((key) => 
-      key.startsWith('assets/dictionary data/') && key.endsWith('.json')
-    ).toList();
+    // Define the dictionary files to load (hardcoded list instead of reading AssetManifest)
+    final dictionaryFiles = [
+      'assets/dictionary data/1_5000_20260319.json',
+      'assets/dictionary data/2_5000_20260319.json',
+      'assets/dictionary data/3_5000_20260319.json',
+      'assets/dictionary data/4_5000_20260319.json',
+      'assets/dictionary data/5_5000_20260319.json',
+      'assets/dictionary data/6_5000_20260319.json',
+      'assets/dictionary data/7_5000_20260319.json',
+      'assets/dictionary data/8_5000_20260319.json',
+      'assets/dictionary data/9_5000_20260319.json',
+      'assets/dictionary data/10_5000_20260319.json',
+      'assets/dictionary data/11_3439_20260319.json',
+    ];
     
     print('Found ${dictionaryFiles.length} dictionary JSON files to load');
     
@@ -75,6 +81,7 @@ class DictionaryService {
         totalInserted += fileInserted;
       } catch (e) {
         print('Error loading dictionary file $filePath: $e');
+        // Continue with next file even if one fails
       }
     }
     
