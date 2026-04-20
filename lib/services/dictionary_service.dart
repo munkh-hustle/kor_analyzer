@@ -140,7 +140,7 @@ class DictionaryService {
     final arrayStart = content.indexOf('[', lexEntryStart);
     if (arrayStart == -1) return 0;
 
-    // Extract entries by finding {"Lemma": patterns
+    // Extract entries by finding LexicalEntry objects (each starts with { followed by "Lemma")
     int pos = arrayStart + 1;
     while (pos < content.length) {
       // Skip whitespace and commas
@@ -156,25 +156,49 @@ class DictionaryService {
       if (pos >= content.length || content[pos] == ']') break;
 
       // Check for Lemma entry - the JSON format is: {\n                "Lemma": {...
-      // So we need to skip the opening brace and whitespace first
+      // We need to find the opening brace of each LexicalEntry
       int checkPos = pos;
       
-      // Skip leading whitespace, commas, and opening braces
-      while (checkPos < content.length && 
-             (content[checkPos] == ' ' || 
-              content[checkPos] == '\n' || 
-              content[checkPos] == '\r' || 
-              content[checkPos] == '\t' ||
-              content[checkPos] == ',' ||
-              content[checkPos] == '{')) {
+      // Skip any leading opening braces to get to the start of an entry
+      // But we need to be careful: each LexicalEntry starts with { followed eventually by "Lemma"
+      // First, skip to find a { that's followed by "Lemma" (with possible whitespace/nested structures)
+      while (checkPos < content.length && content[checkPos] == '{') {
+        // Check if this { is followed by "Lemma" (possibly after whitespace and nested structures)
+        int searchForLemma = checkPos + 1;
+        // Skip whitespace after {
+        while (searchForLemma < content.length && 
+               (content[searchForLemma] == ' ' || 
+                content[searchForLemma] == '\n' || 
+                content[searchForLemma] == '\r' || 
+                content[searchForLemma] == '\t')) {
+          searchForLemma++;
+        }
+        // Check if we found "Lemma"
+        if (searchForLemma < content.length && 
+            content.substring(searchForLemma).startsWith('"Lemma"')) {
+          // Found it! Use this checkPos
+          break;
+        }
+        // Not a Lemma entry, skip this { and continue
         checkPos++;
       }
       
-      // Now check for "Lemma"
+      // Now verify we're at a Lemma entry
       bool hasLemmaPattern = false;
-      if (checkPos < content.length && 
-          content.substring(checkPos).startsWith('"Lemma"')) {
-        hasLemmaPattern = true;
+      if (checkPos < content.length && content[checkPos] == '{') {
+        // Confirm Lemma follows
+        int searchForLemma = checkPos + 1;
+        while (searchForLemma < content.length && 
+               (content[searchForLemma] == ' ' || 
+                content[searchForLemma] == '\n' || 
+                content[searchForLemma] == '\r' || 
+                content[searchForLemma] == '\t')) {
+          searchForLemma++;
+        }
+        if (searchForLemma < content.length && 
+            content.substring(searchForLemma).startsWith('"Lemma"')) {
+          hasLemmaPattern = true;
+        }
       }
       
       if (hasLemmaPattern) {
@@ -208,14 +232,31 @@ class DictionaryService {
             final entryStr = content.substring(entryStart, entryEnd);
             final entry = json.decode(entryStr);
 
-            // Extract word from Lemma
+            // Extract word from Lemma - handle both Map and List cases
+            String? word;
             final lemma = entry['Lemma'];
-            if (lemma != null && lemma is Map) {
-              final feat = lemma['feat'];
-              if (feat != null && feat is Map) {
-                final word = feat['val']?.toString() ?? '';
+            if (lemma != null) {
+              if (lemma is Map) {
+                // Standard case: Lemma is a single object
+                final feat = lemma['feat'];
+                if (feat != null && feat is Map) {
+                  word = feat['val']?.toString() ?? '';
+                }
+              } else if (lemma is List) {
+                // Alternative case: Lemma is a list of objects
+                for (var item in lemma) {
+                  if (item is Map && item.containsKey('feat')) {
+                    final feat = item['feat'];
+                    if (feat != null && feat is Map) {
+                      word = feat['val']?.toString() ?? '';
+                      if (word!.isNotEmpty) break;
+                    }
+                  }
+                }
+              }
+            }
 
-                if (word.isNotEmpty) {
+            if (word != null && word.isNotEmpty) {
                   // Extract Sense information
                   String tag = '';
                   String definition = '';

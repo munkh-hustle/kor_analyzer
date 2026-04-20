@@ -1,42 +1,64 @@
-# Miscellaneous
-*.class
-*.log
+# Compiled and build artifacts
 *.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+__pycache__/
+*.o
+*.obj
+*.class
+*.exe
+*.dll
+*.so
+*.a
+*.out
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
+# Dependencies
+node_modules/
+venv/
+.venv/
+.env
+.env.local
+.env.*
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Editors
+.vscode/
 .idea/
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# Build outputs
+dist/
+build/
+target/
+.gradle/
+
+# Python specific
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.so
+.Python
+*.egg-info/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+
+# Dart/Flutter specific
 .dart_tool/
-.flutter-plugins-dependencies
+.packages
 .pub-cache/
-.pub/
-/build/
-/coverage/
+pubspec.lock
 
-# Symbolication related
-app.*.symbols
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
 
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-
-/assets/dictionary data/
+# OS generated files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
