@@ -159,44 +159,39 @@ class DictionaryService {
       // So we need to skip the opening brace and whitespace first
       int checkPos = pos;
       
-      // Skip leading whitespace
+      // Skip leading whitespace, commas, and opening braces
       while (checkPos < content.length && 
              (content[checkPos] == ' ' || 
               content[checkPos] == '\n' || 
               content[checkPos] == '\r' || 
               content[checkPos] == '\t' ||
-              content[checkPos] == ',')) {
+              content[checkPos] == ',' ||
+              content[checkPos] == '{')) {
         checkPos++;
       }
       
-      // Check if it starts with {
+      // Now check for "Lemma"
       bool hasLemmaPattern = false;
-      if (checkPos < content.length && content[checkPos] == '{') {
-        checkPos++; // skip {
-        
-        // Skip more whitespace after {
-        while (checkPos < content.length && 
-               (content[checkPos] == ' ' || 
-                content[checkPos] == '\n' || 
-                content[checkPos] == '\r' || 
-                content[checkPos] == '\t')) {
-          checkPos++;
-        }
-        
-        // Now check for "Lemma"
-        if (checkPos < content.length && 
-            content.substring(checkPos).startsWith('"Lemma"')) {
-          hasLemmaPattern = true;
-        }
+      if (checkPos < content.length && 
+          content.substring(checkPos).startsWith('"Lemma"')) {
+        hasLemmaPattern = true;
       }
       
       if (hasLemmaPattern) {
-        // Find the end of this entry
+        // Find the end of this entry by counting braces starting from "Lemma"
         int braceCount = 0;
-        int entryStart = pos;
-        int entryEnd = pos;
+        int entryStart = checkPos; // Start from "Lemma" position
+        int entryEnd = checkPos;
 
-        for (int i = pos; i < content.length; i++) {
+        // First, find the opening brace before "Lemma"
+        int searchPos = checkPos;
+        while (searchPos > 0 && content[searchPos] != '{') {
+          searchPos--;
+        }
+        entryStart = searchPos;
+        
+        // Now count braces from the opening brace
+        for (int i = entryStart; i < content.length; i++) {
           if (content[i] == '{')
             braceCount++;
           else if (content[i] == '}') {
@@ -354,6 +349,9 @@ class DictionaryService {
                   }
 
                   // Insert into database
+                  if (inserted < 10 || word == '괴물') {
+                    print('Inserting: word=$word, tag=$tag, def=${definition.substring(0, 50)}...');
+                  }
                   await db.insert(
                       'dictionary',
                       {
@@ -374,7 +372,8 @@ class DictionaryService {
 
           pos = entryEnd;
         } else {
-          pos++;
+          // Couldn't find matching braces, skip forward
+          pos = checkPos + 1;
         }
       } else {
         // Not a Lemma entry, skip this character
@@ -529,17 +528,18 @@ class DictionaryService {
       final countResult = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM dictionary'));
       print('=== Total entries in database: $countResult ===');
       
-      // Check if word exists at all
-      final wordCheck = await db.rawQuery('SELECT word, tag FROM dictionary WHERE word = ? LIMIT 5', [word]);
+      // Check if word exists at all (with detailed logging)
+      final wordCheck = await db.rawQuery('SELECT word, tag, definition FROM dictionary WHERE word = ? LIMIT 5', [word]);
       print('=== Words matching "$word": ${wordCheck.length} ===');
       for (var w in wordCheck) {
-        print('===   Found: ${w['word']} (${w['tag']}) ===');
+        print('===   Found: ${w['word']} (tag="${w['tag']}", def="${w['definition']?.toString().substring(0, 50) ?? "null"}...") ===');
       }
       
+      // First try: exact tag match or empty tag or null tag
       final List<Map<String, dynamic>> results = await db.query(
         'dictionary',
-        where: 'word = ? AND (tag = ? OR tag IS NULL)',
-        whereArgs: [word, tag],
+        where: 'word = ? AND (tag = ? OR tag = ? OR tag IS NULL)',
+        whereArgs: [word, tag, ''],
         limit: 1,
       );
 
