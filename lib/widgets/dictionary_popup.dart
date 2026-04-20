@@ -78,13 +78,23 @@ class DictionaryPopup extends StatelessWidget {
                 color: Colors.grey[50],
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                definition ?? '사전에 등록되지 않은 단어입니다.',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: definition == null ? Colors.grey[600] : Colors.black87,
-                ),
-              ),
+              child: definition == null || definition!.isEmpty
+                  ? Text(
+                      '사전에 등록되지 않은 단어입니다.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: _buildDefinitionParts(definition!).map((part) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: part,
+                        );
+                      }).toList(),
+                    ),
             ),
             
             const SizedBox(height: 20),
@@ -113,6 +123,52 @@ class DictionaryPopup extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  List<Widget> _buildDefinitionParts(String definition) {
+    List<Widget> parts = [];
+    
+    // Split by double newline to separate language sections
+    final lines = definition.split('\n\n');
+    
+    for (var line in lines) {
+      if (line.startsWith('🇲🇳')) {
+        parts.add(_buildLanguageSection('몽골어', line.substring(3).replaceFirst('몽골어: ', ''), Colors.green));
+      } else if (line.startsWith('🇬🇧')) {
+        parts.add(_buildLanguageSection('영어', line.substring(3).replaceFirst('영어: ', ''), Colors.blue));
+      } else if (line.startsWith('🇰🇷')) {
+        parts.add(_buildLanguageSection('한국어', line.substring(3).replaceFirst('한국어: ', ''), Colors.red));
+      } else {
+        // Fallback for other formats
+        parts.add(Text(
+          line,
+          style: const TextStyle(fontSize: 15, height: 1.5),
+        ));
+      }
+    }
+    
+    return parts;
+  }
+
+  Widget _buildLanguageSection(String language, String text, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          language,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          text,
+          style: const TextStyle(fontSize: 15, height: 1.5),
+        ),
+      ],
     );
   }
 

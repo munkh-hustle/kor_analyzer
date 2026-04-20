@@ -1,49 +1,70 @@
-## Issue Fixed: Kiwi Initialization Race Condition
+# QWEN.md - Bug Fix Memory
 
-### Problem
-The Flutter app was calling `isReady()` method before Kiwi initialization completed in the background thread, causing "Kiwi 초기화에 실패했습니다" (Kiwi initialization failed) error.
+## Bug Found: JSON Dictionary Data Not Loading with Mongolian, English, and Korean Explanations
 
-### Root Cause
-- `MainActivity.configureFlutterEngine()` starts Kiwi initialization in a background thread
-- The Flutter provider immediately calls `isReady()` after the channel is set up
-- The `isReady()` call returns `false` because initialization hasn't completed yet
+### Problem Description
+The user reported that the JSON dictionary file was not loading properly, and they wanted to see Mongolian, English, and Korean explanations for words. The logs showed KiwiAnalyzer correctly analyzing Korean text (e.g., '괴물' as NNG), but the dictionary popup wasn't displaying multilingual definitions.
 
-### Solution
-Modified `MainActivity.kt` to:
-1. Added `kiwiInitializing` flag to track initialization state
-2. In the `isReady` method handler, wait for initialization to complete (with 5 second timeout)
-3. Only return the result after initialization completes or timeout occurs
+### Root Cause Analysis
+1. **Dictionary parsing issue**: The `_parseLexicalResourceFormat` method in `dictionary_service.dart` was only extracting the first available definition or prioritizing Korean definitions, ignoring Mongolian and English translations that exist in the JSON data.
 
-### Files Changed
-- `/workspace/android/app/src/main/java/com/example/kor_analyzer/MainActivity.kt`
+2. **JSON structure**: The dictionary JSON files (`assets/dictionary data/1_5000_20260319.json`, etc.) contain a `LexicalResource` → `Lexicon` → `LexicalEntry` structure where each entry has:
+   - `Lemma.feat.val`: The Korean word
+   - `Sense.Equivalent[]`: Array of translations in multiple languages including:
+     - `language: "몽골어"` (Mongolian)
+     - `language: "영어"` (English)  
+     - `language: "한국어"` (Korean)
+   - Each equivalent has `lemma` (translation) and `definition` fields
 
----
+3. **UI display issue**: The `DictionaryPopup` widget was simply displaying the raw definition text without formatting for multiple languages.
 
-## Issue Fixed: Dictionary Asset Not Found
+### Fixes Applied
 
-### Problem
-Error: `Unable to load asset: "assets/dictionary_data.json". The asset does not exist or has empty data.`
+#### 1. Updated `lib/services/dictionary_service.dart`
+Modified `_parseLexicalResourceFormat()` to:
+- Extract Mongolian (`몽골어`), English (`영어`), and Korean (`한국어`) definitions separately
+- Store both the lemma (translation word) and definition for each language
+- Format the combined definition with emoji flags and language labels:
+  ```
+  🇲🇳 몽골어: [lemma] - [definition]
+  
+  🇬🇧 영어: [lemma] - [definition]
+  
+  🇰🇷 한국어: [definition]
+  ```
+- Fall back to first available definition if no specific language definitions are found
 
-### Root Cause
-The `pubspec.yaml` was referencing the dictionary file at `android/app/src/main/assets/dictionary_data.json`, but Flutter's asset system requires files to be in the project root `assets/` directory to be bundled with the app.
+#### 2. Updated `lib/widgets/dictionary_popup.dart`
+Modified to:
+- Handle multi-language definitions by splitting on double newlines (`\n\n`)
+- Parse emoji-prefixed language sections (🇲🇳, 🇬🇧, 🇰🇷)
+- Display each language section with color-coded labels:
+  - Mongolian: Green
+  - English: Blue
+  - Korean: Red
+- Show proper fallback message when definition is null or empty
 
-### Solution
-1. Created `/workspace/assets/` directory
-2. Copied `dictionary_data.json` from `android/app/src/main/assets/` to `assets/`
-3. Updated `pubspec.yaml` to reference `assets/dictionary data/` directory instead of a single file
-4. Modified `dictionary_service.dart` to automatically load all JSON files from the `assets/dictionary data/` directory using AssetManifest.json
+### Files Modified
+1. `/workspace/lib/services/dictionary_service.dart` - Lines 136-357
+2. `/workspace/lib/widgets/dictionary_popup.dart` - Lines 75-173
 
-### Files Changed
-- `/workspace/pubspec.yaml` - Updated asset path to directory
-- `/workspace/assets/dictionary_data.json` - Created (copied from Android assets)
-- `/workspace/lib/services/dictionary_service.dart` - Updated to load multiple JSON files dynamically
+### Testing Notes
+- The dictionary contains ~6,698 entries with Mongolian translations
+- The dictionary contains ~6,698 entries with English translations
+- The database will be populated on first app run when no existing database exists
+- For testing with '괴물' (monster), the entry exists in the JSON at line ~2,119,627
 
----
+### Example Output for '괴물'
+```
+🇲🇳 몽골어: мангас, аймаар хачин жигтэй амьтан - хачин аймаар амьтан.
 
-## Dictionary Data Update
+🇬🇧 영어: monster
 
-### Change
-Multiple dictionary JSON files (1_5000_20260319.json to 11_5000_20260319.json) are now supported in the `assets/dictionary data/` directory. The code will automatically discover and load all `.json` files from this directory at runtime.
+🇰🇷 한국어: (Korean definition if available)
+```
 
-### Note
-Only add new JSON files to `/workspace/assets/dictionary data/` - no code changes needed when adding more dictionary files.
+### Next Steps for User
+1. Delete the existing database to force re-import: 
+   - On Android: Clear app data or uninstall/reinstall
+2. Run the app - it will load the JSON dictionary files on startup
+3. Tap on any analyzed word to see the multilingual dictionary popup
