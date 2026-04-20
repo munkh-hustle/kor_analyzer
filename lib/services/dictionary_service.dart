@@ -472,50 +472,6 @@ class DictionaryService {
         examples TEXT
       )
     ''');
-
-    // Note: Dictionary data is now loaded from JSON asset in _loadDictionaryFromJson
-    // Sample data is only inserted if JSON loading fails or for testing
-    if (!_initialized) {
-      await _insertSampleData(db);
-    }
-  }
-
-  Future<void> _insertSampleData(Database db) async {
-    final sampleWords = [
-      {
-        'word': '페이지',
-        'tag': 'NNG',
-        'definition': '책, 신문, 문서 등의 한 면. 또는 웹사이트의 화면.'
-      },
-      {
-        'word': '통해',
-        'tag': 'VV',
-        'definition': '길이 뚫리어 나아가다. 또는 어떤 매체나 수단을 이용하다.'
-      },
-      {
-        'word': '제보',
-        'tag': 'NNG',
-        'definition': '정보를 제공함. 특히 뉴스거리가 될 만한 정보를 알림.'
-      },
-      {
-        'word': '주시면',
-        'tag': 'VX',
-        'definition': '주다의 높임말. 상대방에게 무엇을 건네거나 해줌을 공손하게 표현.'
-      },
-      {'word': '감사', 'tag': 'NNG', 'definition': '고맙게 여김. 또는 그런 마음.'},
-      {
-        'word': '하겠습니다',
-        'tag': 'XSA',
-        'definition': '하다의 높임 표현. 앞말이 뜻하는 행동을 하겠다는 의지 표현.'
-      },
-      {'word': '공부', 'tag': 'NNG', 'definition': '학문이나 기술을 배우고 익히는 것.'},
-      {'word': '하다', 'tag': 'VV', 'definition': '어떤 행동이나 동작을 수행하다.'},
-      {'word': '좋다', 'tag': 'VA', 'definition': '마음에 들거나 훌륭하다.'},
-    ];
-
-    for (var word in sampleWords) {
-      await db.insert('dictionary', word);
-    }
   }
 
   Future<String?> getDefinition(String word, String tag) async {
@@ -567,18 +523,5 @@ class DictionaryService {
       print('=== Error in getDefinition: $e ===');
       return null;
     }
-  }
-
-  Future<void> addDefinition(String word, String tag, String definition) async {
-    final db = await database;
-    await db.insert(
-      'dictionary',
-      {
-        'word': word,
-        'tag': tag,
-        'definition': definition,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
   }
 }
