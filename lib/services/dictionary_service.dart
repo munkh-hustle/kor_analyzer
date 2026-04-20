@@ -217,8 +217,24 @@ class DictionaryService {
             final lemma = entry['Lemma'];
             if (lemma != null && lemma is Map) {
               final feat = lemma['feat'];
+              String word = '';
+              
+              // Handle both formats:
+              // Format 1: {"feat": {"att": "writtenForm", "val": "괴물"}}
+              // Format 2: {"feat": {...}, "val": "가"}
               if (feat != null && feat is Map) {
-                final word = feat['val']?.toString() ?? '';
+                final att = feat['att']?.toString() ?? '';
+                if (att == 'writtenForm') {
+                  word = feat['val']?.toString() ?? '';
+                } else {
+                  word = feat['val']?.toString() ?? '';
+                }
+              }
+              
+              // Fallback: check if Lemma has val directly
+              if (word.isEmpty && lemma.containsKey('val')) {
+                word = lemma['val']?.toString() ?? '';
+              }
 
                 if (word.isNotEmpty) {
                   // Extract Sense information
