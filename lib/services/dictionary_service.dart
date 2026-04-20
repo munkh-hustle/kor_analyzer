@@ -413,15 +413,18 @@ class DictionaryService {
                   senseDataList.isNotEmpty) {
                 var firstSense = senseDataList[0];
 
-                // Get definition
+                // Get definition - now a direct string, not a list
                 var definitionData = firstSense['definition'];
-                if (definitionData != null &&
-                    definitionData is List &&
-                    definitionData.isNotEmpty) {
-                  definition = definitionData[0]['content'] ?? '';
+                if (definitionData != null) {
+                  if (definitionData is String) {
+                    definition = definitionData;
+                  } else if (definitionData is List && definitionData.isNotEmpty) {
+                    // Fallback for old format
+                    definition = definitionData[0]['content'] ?? '';
+                  }
                 }
 
-                // Get examples
+                // Get examples from examList2
                 var examList = firstSense['examList'];
                 if (examList != null) {
                   List<String> exampleTexts = [];
