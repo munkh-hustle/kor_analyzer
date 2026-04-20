@@ -178,150 +178,90 @@ class DictionaryService {
             
             // Extract word from Lemma
             final lemma = entry['Lemma'];
-            if (lemma == null) continue;
-            
-            String word = '';
-            
-            // Handle both Map and List formats for Lemma
-            if (lemma is Map) {
+            if (lemma != null && lemma is Map) {
               final feat = lemma['feat'];
               if (feat != null && feat is Map) {
-                if (feat.containsKey('att') && feat['att'] == 'writtenForm') {
-                  word = feat['val']?.toString() ?? '';
-                } else if (feat.containsKey('val')) {
-                  word = feat['val']?.toString() ?? '';
-                }
-              }
-            } else if (lemma is List && lemma.isNotEmpty) {
-              // Take the first item that has writtenForm
-              for (var item in lemma) {
-                if (item is Map) {
-                  final feat = item['feat'];
-                  if (feat != null && feat is Map) {
-                    final att = feat['att']?.toString() ?? '';
-                    if (att == 'writtenForm') {
-                      word = feat['val']?.toString() ?? '';
-                      break;
-                    }
-                  }
-                }
-              }
-            }
-            
-            if (word.isNotEmpty) {
+                final word = feat['val']?.toString() ?? '';
+                
+                if (word.isNotEmpty) {
                   // Extract Sense information
                   String tag = '';
                   String definition = '';
                   List<String> examples = [];
                   
                   final senses = entry['Sense'];
-                  if (senses != null) {
-                    List senseList = [];
-                    if (senses is List) {
-                      senseList = senses;
-                    } else if (senses is Map && senses.containsKey('Equivalent')) {
-                      // Single sense as Map
-                      senseList = [senses];
-                    }
-                    
-                    if (senseList.isNotEmpty) {
-                      final sense = senseList[0];
-                      if (sense is Map) {
-                        // Get equivalents (translations/definitions in different languages)
-                        final equivalents = sense['Equivalent'];
-                        if (equivalents != null && equivalents is List) {
-                          String firstDefinition = '';
-                          String firstTag = '';
-                          
-                          for (var eq in equivalents) {
-                            if (eq is Map) {
-                              final feats = eq['feat'];
-                              if (feats != null && feats is List) {
-                                String lang = '';
-                                String defText = '';
-                                String lemmaText = '';
-                                
-                                for (var f in feats) {
-                                  if (f is Map) {
-                                    if (f['att'] == 'language') {
-                                      lang = f['val']?.toString() ?? '';
-                                    } else if (f['att'] == 'definition') {
-                                      defText = f['val']?.toString() ?? '';
-                                    } else if (f['att'] == 'lemma') {
-                                      lemmaText = f['val']?.toString() ?? '';
-                                    }
-                                  }
-                                }
-                                
-                                // Store first available definition and tag as fallback
-                                if (firstDefinition.isEmpty && defText.isNotEmpty) {
-                                  firstDefinition = '[$lang] $defText';
-                                  firstTag = lemmaText;
-                                }
-                                
-                                // Use Korean definition if available
-                                if (lang == '한국어' && defText.isNotEmpty) {
-                                  definition = defText;
-                                  if (lemmaText.isNotEmpty) {
-                                    tag = lemmaText;
-                                  }
-                                } else if (definition.isEmpty && defText.isNotEmpty) {
-                                  // Store first non-Korean definition as fallback (only if we don't have one yet)
-                                  if (!definition.startsWith('[')) {
-                                    definition = '[$lang] $defText';
-                                    if (tag.isEmpty && lemmaText.isNotEmpty) {
-                                      tag = lemmaText;
-                                    }
+                  if (senses != null && senses is List && senses.isNotEmpty) {
+                    final sense = senses[0];
+                    if (sense is Map) {
+                      // Get equivalents (translations/definitions in different languages)
+                      final equivalents = sense['Equivalent'];
+                      if (equivalents != null && equivalents is List) {
+                        String firstDefinition = '';
+                        String firstTag = '';
+                        
+                        for (var eq in equivalents) {
+                          if (eq is Map) {
+                            final feats = eq['feat'];
+                            if (feats != null && feats is List) {
+                              String lang = '';
+                              String defText = '';
+                              String lemmaText = '';
+                              
+                              for (var f in feats) {
+                                if (f is Map) {
+                                  if (f['att'] == 'language') {
+                                    lang = f['val']?.toString() ?? '';
+                                  } else if (f['att'] == 'definition') {
+                                    defText = f['val']?.toString() ?? '';
+                                  } else if (f['att'] == 'lemma') {
+                                    lemmaText = f['val']?.toString() ?? '';
                                   }
                                 }
                               }
-                            }
-                          }
-                          
-                          // If no Korean definition found, use the first available
-                          if (definition.isEmpty && firstDefinition.isNotEmpty) {
-                            definition = firstDefinition;
-                          }
-                          if (tag.isEmpty && firstTag.isNotEmpty) {
-                            tag = firstTag;
-                          }
-                        } else {
-                          // No equivalents found, try to get any text from Sense directly
-                          final senseFeats = sense['feat'];
-                          if (senseFeats != null && senseFeats is List) {
-                            for (var f in senseFeats) {
-                              if (f is Map) {
-                                if (f['att'] == 'definition' && definition.isEmpty) {
-                                  definition = f['val']?.toString() ?? '';
-                                }
-                                if (f['att'] == 'lemma' && tag.isEmpty) {
-                                  tag = f['val']?.toString() ?? '';
-                                }
+                              
+                              // Store first available definition and tag as fallback
+                              if (firstDefinition.isEmpty && defText.isNotEmpty) {
+                                firstDefinition = '[$lang] $defText';
+                                firstTag = lemmaText;
+                              }
+                              
+                              // Use Korean definition if available, otherwise use first available
+                              if (lang == '한국어' && defText.isNotEmpty) {
+                                definition = defText;
+                              } else if (definition.isEmpty && defText.isNotEmpty && lang != '한국어') {
+                                // Store first non-Korean definition as fallback
+                                definition = '[$lang] $defText';
+                              }
+                              
+                              // Get tag from Korean entry if available
+                              if (lang == '한국어' && lemmaText.isNotEmpty) {
+                                tag = lemmaText;
                               }
                             }
                           }
                         }
                         
-                        // Get examples from SenseExample
-                        final senseExamples = sense['SenseExample'];
-                        if (senseExamples != null) {
-                          List exampleList = [];
-                          if (senseExamples is List) {
-                            exampleList = senseExamples;
-                          } else if (senseExamples is Map && senseExamples.containsKey('feat')) {
-                            exampleList = [senseExamples];
-                          }
-                          
-                          for (var ex in exampleList) {
-                            if (ex is Map) {
-                              final feats = ex['feat'];
-                              if (feats != null && feats is List) {
-                                for (var f in feats) {
-                                  if (f is Map && f['att'] == 'example') {
-                                    final exampleText = f['val']?.toString() ?? '';
-                                    if (exampleText.isNotEmpty) {
-                                      examples.add(exampleText);
-                                    }
+                        // If no Korean definition found, use the first available
+                        if (definition.isEmpty && firstDefinition.isNotEmpty) {
+                          definition = firstDefinition;
+                        }
+                        if (tag.isEmpty && firstTag.isNotEmpty) {
+                          tag = firstTag;
+                        }
+                      }
+                      
+                      // Get examples from SenseExample
+                      final senseExamples = sense['SenseExample'];
+                      if (senseExamples != null && senseExamples is List) {
+                        for (var ex in senseExamples) {
+                          if (ex is Map) {
+                            final feats = ex['feat'];
+                            if (feats != null && feats is List) {
+                              for (var f in feats) {
+                                if (f is Map && f['att'] == 'example') {
+                                  final exampleText = f['val']?.toString() ?? '';
+                                  if (exampleText.isNotEmpty) {
+                                    examples.add(exampleText);
                                   }
                                 }
                               }
