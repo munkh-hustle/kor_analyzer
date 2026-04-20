@@ -185,7 +185,9 @@ class _TextInputScreenState extends State<TextInputScreen> {
 
   void _showDefinition(BuildContext context, String word, String tag, 
       KoreanReaderProvider provider) async {
+    print('=== _showDefinition called for word=$word, tag=$tag ===');
     final definition = await provider.getDefinition(word, tag);
+    print('=== _showDefinition received definition: ${definition ?? "null"} ===');
     
     showDialog(
       context: context,

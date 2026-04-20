@@ -113,7 +113,10 @@ class KoreanReaderProvider extends ChangeNotifier {
   }
 
   Future<String?> getDefinition(String word, String tag) async {
-    return await _dictionaryService.getDefinition(word, tag);
+    print('=== Provider: getDefinition called for word=$word, tag=$tag ===');
+    final definition = await _dictionaryService.getDefinition(word, tag);
+    print('=== Provider: getDefinition returned: ${definition ?? "null"} ===');
+    return definition;
   }
 
   void clearResults() {
