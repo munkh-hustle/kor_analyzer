@@ -129,6 +129,7 @@ class DictionaryService {
     }
 
     print('Total dictionary entries inserted: $totalInserted');
+    _initialized = true;
 
     await tempDb.close();
   }
@@ -528,31 +529,53 @@ class DictionaryService {
   }
 
   Future<String?> getDefinition(String word, String tag) async {
-    final db = await database;
-    final List<Map<String, dynamic>> results = await db.query(
-      'dictionary',
-      where: 'word = ? AND (tag = ? OR tag IS NULL)',
-      whereArgs: [word, tag],
-      limit: 1,
-    );
+    try {
+      print('=== DictionaryService: Looking up word=$word, tag=$tag ===');
+      final db = await database;
+      print('=== Database opened successfully ===');
+      
+      // First, check total count in database
+      final countResult = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM dictionary'));
+      print('=== Total entries in database: $countResult ===');
+      
+      // Check if word exists at all
+      final wordCheck = await db.rawQuery('SELECT word, tag FROM dictionary WHERE word = ? LIMIT 5', [word]);
+      print('=== Words matching "$word": ${wordCheck.length} ===');
+      for (var w in wordCheck) {
+        print('===   Found: ${w['word']} (${w['tag']}) ===');
+      }
+      
+      final List<Map<String, dynamic>> results = await db.query(
+        'dictionary',
+        where: 'word = ? AND (tag = ? OR tag IS NULL)',
+        whereArgs: [word, tag],
+        limit: 1,
+      );
 
-    if (results.isNotEmpty) {
-      return results.first['definition'] as String;
+      if (results.isNotEmpty) {
+        print('=== Found definition with matching tag ===');
+        return results.first['definition'] as String;
+      }
+
+      // Try without tag if not found
+      final List<Map<String, dynamic>> fallbackResults = await db.query(
+        'dictionary',
+        where: 'word = ?',
+        whereArgs: [word],
+        limit: 1,
+      );
+
+      if (fallbackResults.isNotEmpty) {
+        print('=== Found definition with fallback (no tag match) ===');
+        return fallbackResults.first['definition'] as String;
+      }
+
+      print('=== No definition found for $word ===');
+      return null;
+    } catch (e) {
+      print('=== Error in getDefinition: $e ===');
+      return null;
     }
-
-    // Try without tag if not found
-    final List<Map<String, dynamic>> fallbackResults = await db.query(
-      'dictionary',
-      where: 'word = ?',
-      whereArgs: [word],
-      limit: 1,
-    );
-
-    if (fallbackResults.isNotEmpty) {
-      return fallbackResults.first['definition'] as String;
-    }
-
-    return null;
   }
 
   Future<void> addDefinition(String word, String tag, String definition) async {
