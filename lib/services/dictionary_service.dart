@@ -197,6 +197,9 @@ class DictionaryService {
                   // Extract Sense information
                   String tag = '';
                   String definition = '';
+                  String mongolianDefinition = '';
+                  String englishDefinition = '';
+                  String koreanDefinition = '';
                   List<String> examples = [];
 
                   final senses = entry['Sense'];
@@ -245,14 +248,19 @@ class DictionaryService {
                                   firstTag = lemmaText;
                                 }
 
-                                // Use Korean definition if available, otherwise use first available
-                                if (lang == '한국어' && defText.isNotEmpty) {
-                                  definition = defText;
-                                } else if (definition.isEmpty &&
-                                    defText.isNotEmpty &&
-                                    lang != '한국어') {
-                                  // Store first non-Korean definition as fallback
-                                  definition = '[$lang] $defText';
+                                // Extract Mongolian, English, and Korean definitions separately
+                                if (lang == '몽골어' && defText.isNotEmpty) {
+                                  mongolianDefinition = defText;
+                                  if (lemmaText.isNotEmpty) {
+                                    mongolianDefinition = '$lemmaText - $defText';
+                                  }
+                                } else if (lang == '영어' && defText.isNotEmpty) {
+                                  englishDefinition = defText;
+                                  if (lemmaText.isNotEmpty) {
+                                    englishDefinition = '$lemmaText - $defText';
+                                  }
+                                } else if (lang == '한국어' && defText.isNotEmpty) {
+                                  koreanDefinition = defText;
                                 }
 
                                 // Get tag from Korean entry if available
@@ -263,11 +271,25 @@ class DictionaryService {
                             }
                           }
 
-                          // If no Korean definition found, use the first available
-                          if (definition.isEmpty &&
-                              firstDefinition.isNotEmpty) {
-                            definition = firstDefinition;
+                          // Build combined definition with Mongolian, English, and Korean
+                          List<String> defParts = [];
+                          if (mongolianDefinition.isNotEmpty) {
+                            defParts.add('🇲🇳 몽골어: $mongolianDefinition');
                           }
+                          if (englishDefinition.isNotEmpty) {
+                            defParts.add('🇬🇧 영어: $englishDefinition');
+                          }
+                          if (koreanDefinition.isNotEmpty) {
+                            defParts.add('🇰🇷 한국어: $koreanDefinition');
+                          }
+                          
+                          // If no specific language definitions found, use first available
+                          if (defParts.isEmpty && firstDefinition.isNotEmpty) {
+                            definition = firstDefinition;
+                          } else {
+                            definition = defParts.join('\n\n');
+                          }
+                          
                           if (tag.isEmpty && firstTag.isNotEmpty) {
                             tag = firstTag;
                           }
