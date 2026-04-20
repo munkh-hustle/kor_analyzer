@@ -196,6 +196,9 @@ class DictionaryService {
                       // Get equivalents (translations/definitions in different languages)
                       final equivalents = sense['Equivalent'];
                       if (equivalents != null && equivalents is List) {
+                        String firstDefinition = '';
+                        String firstTag = '';
+                        
                         for (var eq in equivalents) {
                           if (eq is Map) {
                             final feats = eq['feat'];
@@ -216,10 +219,16 @@ class DictionaryService {
                                 }
                               }
                               
+                              // Store first available definition and tag as fallback
+                              if (firstDefinition.isEmpty && defText.isNotEmpty) {
+                                firstDefinition = '[$lang] $defText';
+                                firstTag = lemmaText;
+                              }
+                              
                               // Use Korean definition if available, otherwise use first available
                               if (lang == '한국어' && defText.isNotEmpty) {
                                 definition = defText;
-                              } else if (definition.isEmpty && defText.isNotEmpty) {
+                              } else if (definition.isEmpty && defText.isNotEmpty && lang != '한국어') {
                                 // Store first non-Korean definition as fallback
                                 definition = '[$lang] $defText';
                               }
@@ -230,6 +239,14 @@ class DictionaryService {
                               }
                             }
                           }
+                        }
+                        
+                        // If no Korean definition found, use the first available
+                        if (definition.isEmpty && firstDefinition.isNotEmpty) {
+                          definition = firstDefinition;
+                        }
+                        if (tag.isEmpty && firstTag.isNotEmpty) {
+                          tag = firstTag;
                         }
                       }
                       
