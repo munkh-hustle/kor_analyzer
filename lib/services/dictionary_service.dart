@@ -163,7 +163,42 @@ class DictionaryService {
 
       if (pos >= content.length || content[pos] == ']') break;
 
-      if (content.substring(pos).startsWith('{"Lemma"')) {
+      // Check for Lemma entry - the JSON format is: {\n                "Lemma": {...
+      // So we need to skip the opening brace and whitespace first
+      int checkPos = pos;
+      
+      // Skip leading whitespace
+      while (checkPos < content.length && 
+             (content[checkPos] == ' ' || 
+              content[checkPos] == '\n' || 
+              content[checkPos] == '\r' || 
+              content[checkPos] == '\t' ||
+              content[checkPos] == ',')) {
+        checkPos++;
+      }
+      
+      // Check if it starts with {
+      bool hasLemmaPattern = false;
+      if (checkPos < content.length && content[checkPos] == '{') {
+        checkPos++; // skip {
+        
+        // Skip more whitespace after {
+        while (checkPos < content.length && 
+               (content[checkPos] == ' ' || 
+                content[checkPos] == '\n' || 
+                content[checkPos] == '\r' || 
+                content[checkPos] == '\t')) {
+          checkPos++;
+        }
+        
+        // Now check for "Lemma"
+        if (checkPos < content.length && 
+            content.substring(checkPos).startsWith('"Lemma"')) {
+          hasLemmaPattern = true;
+        }
+      }
+      
+      if (hasLemmaPattern) {
         // Find the end of this entry
         int braceCount = 0;
         int entryStart = pos;
@@ -342,6 +377,7 @@ class DictionaryService {
             }
           } catch (e) {
             // Skip malformed entries
+            print('Error parsing entry at pos $pos: $e');
           }
 
           pos = entryEnd;
@@ -349,10 +385,12 @@ class DictionaryService {
           pos++;
         }
       } else {
+        // Not a Lemma entry, skip this character
         pos++;
       }
     }
 
+    print('Finished parsing LexicalResource format. Total inserted: $inserted');
     return inserted;
   }
 
