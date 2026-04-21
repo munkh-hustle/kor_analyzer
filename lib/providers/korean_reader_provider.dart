@@ -112,6 +112,13 @@ class KoreanReaderProvider extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>?> getDefinitionWithMultiLang(String word, String tag) async {
+    print('=== Provider: getDefinitionWithMultiLang called for word=$word, tag=$tag ===');
+    final result = await _dictionaryService.getDefinitionWithMultiLang(word, tag);
+    print('=== Provider: getDefinitionWithMultiLang returned: ${result != null ? "has data" : "null"} ===');
+    return result;
+  }
+
   Future<String?> getDefinition(String word, String tag) async {
     print('=== Provider: getDefinition called for word=$word, tag=$tag ===');
     final definition = await _dictionaryService.getDefinition(word, tag);

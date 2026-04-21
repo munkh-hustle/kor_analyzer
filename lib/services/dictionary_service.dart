@@ -460,6 +460,7 @@ class DictionaryService {
             // Extract definition from senseInfo
             String definition = '';
             String examples = '';
+            String multilanListJson = '';
 
             if (senseInfo != null) {
               var senseDataList = senseInfo['senseDataList'];
@@ -476,6 +477,16 @@ class DictionaryService {
                   } else if (definitionData is List &&
                       definitionData.isNotEmpty) {
                     definition = definitionData[0]['content'] ?? '';
+                  }
+                }
+
+                // Get multilanList for multi-language translations
+                var multilanList = firstSense['multilanList'];
+                if (multilanList != null && multilanList is List) {
+                  try {
+                    multilanListJson = json.encode(multilanList);
+                  } catch (e) {
+                    print('Error encoding multilanList: $e');
                   }
                 }
 
@@ -500,7 +511,7 @@ class DictionaryService {
             if (word.isNotEmpty) {
               if (word == '마음') {
                 final defPreview = definition.length > 50 ? definition.substring(0, 50) : definition;
-                print('=== INSERTING 마음: word="$word", tag="$tag", def="$defPreview..." ===');
+                print('=== INSERTING 마음: word="$word", tag="$tag", def="$defPreview...", multilan=${multilanListJson.isNotEmpty ? "yes" : "no"} ===');
               }
               await db.insert(
                   'dictionary',
@@ -509,6 +520,7 @@ class DictionaryService {
                     'tag': tag,
                     'definition': definition,
                     'examples': examples,
+                    'multilan_list': multilanListJson,
                   },
                   conflictAlgorithm: ConflictAlgorithm.ignore);
               inserted++;
@@ -533,12 +545,13 @@ class DictionaryService {
         word TEXT NOT NULL,
         tag TEXT,
         definition TEXT,
-        examples TEXT
+        examples TEXT,
+        multilan_list TEXT
       )
     ''');
   }
 
-  Future<String?> getDefinition(String word, String tag) async {
+  Future<Map<String, dynamic>?> getDefinitionWithMultiLang(String word, String tag) async {
     try {
       print('=== DictionaryService: Looking up word=$word, tag=$tag ===');
       final db = await database;
@@ -558,7 +571,7 @@ class DictionaryService {
 
       // Check if word exists at all (with detailed logging)
       final wordCheck = await db.rawQuery(
-          'SELECT word, tag, definition FROM dictionary WHERE word = ? LIMIT 5',
+          'SELECT word, tag, definition, multilan_list FROM dictionary WHERE word = ? LIMIT 5',
           [searchWord]);
       print('=== Words matching "$searchWord": ${wordCheck.length} ===');
       for (var w in wordCheck) {
@@ -615,7 +628,10 @@ class DictionaryService {
 
       if (results.isNotEmpty) {
         print('=== Found definition with matching tag ===');
-        return results.first['definition'] as String;
+        return {
+          'definition': results.first['definition'] as String?,
+          'multilanList': results.first['multilan_list'] as String?,
+        };
       }
 
       // Try without tag if not found
@@ -628,7 +644,10 @@ class DictionaryService {
 
       if (fallbackResults.isNotEmpty) {
         print('=== Found definition with fallback (no tag match) ===');
-        return fallbackResults.first['definition'] as String;
+        return {
+          'definition': fallbackResults.first['definition'] as String?,
+          'multilanList': fallbackResults.first['multilan_list'] as String?,
+        };
       }
 
       print('=== No definition found for $word ===');
@@ -655,9 +674,14 @@ class DictionaryService {
       
       return null;
     } catch (e) {
-      print('=== Error in getDefinition: $e ===');
+      print('=== Error in getDefinitionWithMultiLang: $e ===');
       return null;
     }
+  }
+
+  Future<String?> getDefinition(String word, String tag) async {
+    final result = await getDefinitionWithMultiLang(word, tag);
+    return result?['definition'] as String?;
   }
 
   /// Convert Kiwi morpheme tags to Korean dictionary tags
