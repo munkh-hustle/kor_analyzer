@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 class DictionaryService {
   Database? _database;
@@ -84,10 +85,8 @@ class DictionaryService {
 
         // Load file as bytes first to handle large files better
         final byteData = await rootBundle.load(filePath);
-        final jsonString = String.fromCharCodes(byteData.buffer.asUint8List());
-
-        // Clear reference to allow garbage collection
-        byteData.buffer.asUint8List();
+        // Decode UTF-8 properly by using the raw bytes directly with utf8.decoder
+        final jsonString = utf8.decode(byteData.buffer.asUint8List());
 
         if (jsonString.isEmpty) {
           print('Warning: Empty file $filePath');
@@ -135,6 +134,19 @@ class DictionaryService {
         'SELECT word, tag FROM dictionary WHERE word = ?', ['마음']);
     if (verifyResult.isEmpty) {
       print('=== WARNING: 마음 NOT found in database after insertion! ===');
+      // Try LIKE query to find similar entries
+      final likeVerify = await tempDb.rawQuery(
+          'SELECT word, tag, LENGTH(word) as len FROM dictionary WHERE word LIKE ? LIMIT 10',
+          ['%마음%']);
+      if (likeVerify.isNotEmpty) {
+        print('=== Found ${likeVerify.length} similar entries with LIKE: ===');
+        for (var r in likeVerify) {
+          final dbWord = r['word'].toString();
+          print('===   Similar: word="${r['word']}" (len=${r['len']}, bytes=${dbWord.codeUnits}), tag="${r['tag']}" ===');
+        }
+      } else {
+        print('=== No entries containing "마음" found at all ===');
+      }
     } else {
       print('=== SUCCESS: 마음 found in database with ${verifyResult.length} entries ===');
       for (var r in verifyResult) {
@@ -431,6 +443,10 @@ class DictionaryService {
             String word = wordInfo['org_word'] ?? '';
             String tag = wordInfo['sp_code_name'] ?? '';
 
+            // Trim whitespace from word and tag to ensure clean data
+            word = word.trim();
+            tag = tag.trim();
+
             // Debug: Log first few entries and specifically '마음'
             if (inserted < 10 || word == '마음') {
               print(
@@ -526,6 +542,9 @@ class DictionaryService {
       final db = await database;
       print('=== Database opened successfully ===');
 
+      // Trim whitespace from search parameters
+      final searchWord = word.trim();
+      
       // Convert Kiwi tag to Korean dictionary tag if needed
       String? koreanTag = _convertKiwiTagToKorean(tag);
       print('=== Converted tag: $tag -> $koreanTag ===');
@@ -538,8 +557,8 @@ class DictionaryService {
       // Check if word exists at all (with detailed logging)
       final wordCheck = await db.rawQuery(
           'SELECT word, tag, definition FROM dictionary WHERE word = ? LIMIT 5',
-          [word]);
-      print('=== Words matching "$word": ${wordCheck.length} ===');
+          [searchWord]);
+      print('=== Words matching "$searchWord": ${wordCheck.length} ===');
       for (var w in wordCheck) {
         print(
             '===   Found: ${w['word']} (tag="${w['tag']}", def="${w['definition']?.toString().substring(0, 50) ?? "null"}...") ===');
@@ -549,8 +568,8 @@ class DictionaryService {
       if (wordCheck.isEmpty) {
         print('=== Debug: Checking for similar words ===');
         // Log search word details
-        print('=== Search word: "$word" (len=${word.length}) ===');
-        print('=== Search word bytes: ${word.codeUnits} ===');
+        print('=== Search word: "$searchWord" (len=${searchWord.length}) ===');
+        print('=== Search word bytes: ${searchWord.codeUnits} ===');
         
         // Get sample of all words from DB to compare
         final allWords = await db.rawQuery(
@@ -564,8 +583,8 @@ class DictionaryService {
         // Try a LIKE query to find similar words
         final likeResults = await db.rawQuery(
             'SELECT word, tag FROM dictionary WHERE word LIKE ? LIMIT 10',
-            ['%$word%']);
-        print('=== LIKE query results for "%$word%": ${likeResults.length} ===');
+            ['%$searchWord%']);
+        print('=== LIKE query results for "%$searchWord%": ${likeResults.length} ===');
         for (var w in likeResults) {
           print('===   LIKE match: "${w['word']}" (tag="${w['tag']}") ===');
         }
@@ -577,7 +596,7 @@ class DictionaryService {
         results = await db.query(
           'dictionary',
           where: 'word = ? AND (tag = ? OR tag = ? OR tag IS NULL)',
-          whereArgs: [word, koreanTag, ''],
+          whereArgs: [searchWord, koreanTag, ''],
           limit: 1,
         );
       } else {
@@ -585,7 +604,7 @@ class DictionaryService {
         results = await db.query(
           'dictionary',
           where: 'word = ? AND (tag = ? OR tag = ? OR tag IS NULL)',
-          whereArgs: [word, tag, ''],
+          whereArgs: [searchWord, tag, ''],
           limit: 1,
         );
       }
@@ -599,7 +618,7 @@ class DictionaryService {
       final List<Map<String, dynamic>> fallbackResults = await db.query(
         'dictionary',
         where: 'word = ?',
-        whereArgs: [word],
+        whereArgs: [searchWord],
         limit: 1,
       );
 
