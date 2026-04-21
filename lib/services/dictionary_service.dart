@@ -386,8 +386,9 @@ class DictionaryService {
 
                   // Insert into database
                   if (inserted < 10 || word == '괴물') {
+                    final defPreview = definition.length > 50 ? definition.substring(0, 50) : definition;
                     print(
-                        'Inserting: word=$word, tag=$tag, def=${definition.substring(0, 50)}...');
+                        'Inserting: word=$word, tag=$tag, def=$defPreview...');
                   }
                   await db.insert(
                       'dictionary',
@@ -498,7 +499,8 @@ class DictionaryService {
             // Insert into database if we have a word
             if (word.isNotEmpty) {
               if (word == '마음') {
-                print('=== INSERTING 마음: word="$word", tag="$tag", def="${definition.substring(0, 50)}..." ===');
+                final defPreview = definition.length > 50 ? definition.substring(0, 50) : definition;
+                print('=== INSERTING 마음: word="$word", tag="$tag", def="$defPreview..." ===');
               }
               await db.insert(
                   'dictionary',
@@ -560,8 +562,10 @@ class DictionaryService {
           [searchWord]);
       print('=== Words matching "$searchWord": ${wordCheck.length} ===');
       for (var w in wordCheck) {
+        final defStr = w['definition']?.toString() ?? 'null';
+        final defPreview = defStr.length > 50 ? defStr.substring(0, 50) : defStr;
         print(
-            '===   Found: ${w['word']} (tag="${w['tag']}", def="${w['definition']?.toString().substring(0, 50) ?? "null"}...") ===');
+            '===   Found: ${w['word']} (tag="${w['tag']}", def="$defPreview...") ===');
       }
       
       // Debug: Check for encoding/whitespace issues
