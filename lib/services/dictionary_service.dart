@@ -58,6 +58,13 @@ class DictionaryService {
       'assets/dictionary data/word_level01_01.json',
       'assets/dictionary data/word_level02_01.json',
       'assets/dictionary data/word_level02_02.json',
+      'assets/dictionary data/word_level03_01.json',
+      'assets/dictionary data/word_level03_02.json',
+      'assets/dictionary data/word_level03_03.json',
+      'assets/dictionary data/word_level03_04.json',
+      'assets/dictionary data/word_level03_05.json',
+      'assets/dictionary data/word_level03_06.json',
+      'assets/dictionary data/word_level03_07.json',
     ];
 
     // Filter to only include files that exist (check by trying to load)
