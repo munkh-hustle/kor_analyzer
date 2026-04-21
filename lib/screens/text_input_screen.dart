@@ -189,10 +189,13 @@ class _TextInputScreenState extends State<TextInputScreen> {
     final result = await provider.getDefinitionWithMultiLang(word, tag);
     print('=== _showDefinition received definition: ${result?['definition'] ?? "null"} ===');
     
+    // If a matchedWord is returned (prefix match), show that in the popup
+    final displayWord = result?['matchedWord'] as String? ?? word;
+    
     showDialog(
       context: context,
       builder: (context) => DictionaryPopup(
-        word: word,
+        word: displayWord,
         tag: tag,
         definition: result?['definition'] as String?,
         multilanListJson: result?['multilanList'] as String?,

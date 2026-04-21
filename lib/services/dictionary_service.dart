@@ -650,6 +650,28 @@ class DictionaryService {
         };
       }
 
+      // If no exact match found, try to find words that START with the search word
+      // This helps when looking up stems like "보" which should match "보다"
+      print('=== No exact match found, trying prefix search for "$searchWord"... ===');
+      final List<Map<String, dynamic>> prefixResults = await db.query(
+        'dictionary',
+        where: 'word LIKE ? AND LENGTH(word) > ?',
+        whereArgs: ['$searchWord%', searchWord.length],
+        limit: 5,
+      );
+
+      if (prefixResults.isNotEmpty) {
+        print('=== Found ${prefixResults.length} words starting with "$searchWord" ===');
+        // Return the first match (shortest word that starts with the search term)
+        final bestMatch = prefixResults.first;
+        print('=== Returning best match: "${bestMatch['word']}" (tag="${bestMatch['tag']}") ===');
+        return {
+          'definition': bestMatch['definition'] as String?,
+          'multilanList': bestMatch['multilan_list'] as String?,
+          'matchedWord': bestMatch['word'] as String?, // Include the matched word for display
+        };
+      }
+
       print('=== No definition found for $word ===');
       
       // Additional debug: Show all entries with similar byte patterns
