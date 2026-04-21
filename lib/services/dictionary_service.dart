@@ -25,6 +25,15 @@ class DictionaryService {
 
     if (!dbExists) {
       // Load dictionary data from JSON asset
+      print('=== Creating new database ===');
+      await _loadDictionaryFromJson(path);
+    } else {
+      print('=== Database already exists at: $path ===');
+      // Check database version - increment version to force rebuild if needed
+      // Temp DB version check: delete and recreate for testing
+      // Uncomment below to force rebuild:
+      await deleteDatabase(path);
+      print('=== Deleted old database, will create new one ===');
       await _loadDictionaryFromJson(path);
     }
 
@@ -157,25 +166,25 @@ class DictionaryService {
       // Check for Lemma entry - the JSON format is: {\n                "Lemma": {...
       // So we need to skip the opening brace and whitespace first
       int checkPos = pos;
-      
+
       // Skip leading whitespace, commas, and opening braces
-      while (checkPos < content.length && 
-             (content[checkPos] == ' ' || 
-              content[checkPos] == '\n' || 
-              content[checkPos] == '\r' || 
+      while (checkPos < content.length &&
+          (content[checkPos] == ' ' ||
+              content[checkPos] == '\n' ||
+              content[checkPos] == '\r' ||
               content[checkPos] == '\t' ||
               content[checkPos] == ',' ||
               content[checkPos] == '{')) {
         checkPos++;
       }
-      
+
       // Now check for "Lemma"
       bool hasLemmaPattern = false;
-      if (checkPos < content.length && 
+      if (checkPos < content.length &&
           content.substring(checkPos).startsWith('"Lemma"')) {
         hasLemmaPattern = true;
       }
-      
+
       if (hasLemmaPattern) {
         // Find the end of this entry by counting braces starting from "Lemma"
         int braceCount = 0;
@@ -188,7 +197,7 @@ class DictionaryService {
           searchPos--;
         }
         entryStart = searchPos;
-        
+
         // Now count braces from the opening brace
         for (int i = entryStart; i < content.length; i++) {
           if (content[i] == '{')
@@ -273,14 +282,16 @@ class DictionaryService {
                                 if (lang == '몽골어' && defText.isNotEmpty) {
                                   mongolianDefinition = defText;
                                   if (lemmaText.isNotEmpty) {
-                                    mongolianDefinition = '$lemmaText - $defText';
+                                    mongolianDefinition =
+                                        '$lemmaText - $defText';
                                   }
                                 } else if (lang == '영어' && defText.isNotEmpty) {
                                   englishDefinition = defText;
                                   if (lemmaText.isNotEmpty) {
                                     englishDefinition = '$lemmaText - $defText';
                                   }
-                                } else if (lang == '한국어' && defText.isNotEmpty) {
+                                } else if (lang == '한국어' &&
+                                    defText.isNotEmpty) {
                                   koreanDefinition = defText;
                                 }
 
@@ -303,14 +314,14 @@ class DictionaryService {
                           if (koreanDefinition.isNotEmpty) {
                             defParts.add('🇰🇷 한국어: $koreanDefinition');
                           }
-                          
+
                           // If no specific language definitions found, use first available
                           if (defParts.isEmpty && firstDefinition.isNotEmpty) {
                             definition = firstDefinition;
                           } else {
                             definition = defParts.join('\n\n');
                           }
-                          
+
                           if (tag.isEmpty && firstTag.isNotEmpty) {
                             tag = firstTag;
                           }
@@ -349,7 +360,8 @@ class DictionaryService {
 
                   // Insert into database
                   if (inserted < 10 || word == '괴물') {
-                    print('Inserting: word=$word, tag=$tag, def=${definition.substring(0, 50)}...');
+                    print(
+                        'Inserting: word=$word, tag=$tag, def=${definition.substring(0, 50)}...');
                   }
                   await db.insert(
                       'dictionary',
@@ -418,7 +430,8 @@ class DictionaryService {
                 if (definitionData != null) {
                   if (definitionData is String) {
                     definition = definitionData;
-                  } else if (definitionData is List && definitionData.isNotEmpty) {
+                  } else if (definitionData is List &&
+                      definitionData.isNotEmpty) {
                     definition = definitionData[0]['content'] ?? '';
                   }
                 }
@@ -480,22 +493,26 @@ class DictionaryService {
       print('=== DictionaryService: Looking up word=$word, tag=$tag ===');
       final db = await database;
       print('=== Database opened successfully ===');
-      
+
       // Convert Kiwi tag to Korean dictionary tag if needed
       String? koreanTag = _convertKiwiTagToKorean(tag);
       print('=== Converted tag: $tag -> $koreanTag ===');
-      
+
       // First, check total count in database
-      final countResult = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM dictionary'));
+      final countResult = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM dictionary'));
       print('=== Total entries in database: $countResult ===');
-      
+
       // Check if word exists at all (with detailed logging)
-      final wordCheck = await db.rawQuery('SELECT word, tag, definition FROM dictionary WHERE word = ? LIMIT 5', [word]);
+      final wordCheck = await db.rawQuery(
+          'SELECT word, tag, definition FROM dictionary WHERE word = ? LIMIT 5',
+          [word]);
       print('=== Words matching "$word": ${wordCheck.length} ===');
       for (var w in wordCheck) {
-        print('===   Found: ${w['word']} (tag="${w['tag']}", def="${w['definition']?.toString().substring(0, 50) ?? "null"}...") ===');
+        print(
+            '===   Found: ${w['word']} (tag="${w['tag']}", def="${w['definition']?.toString().substring(0, 50) ?? "null"}...") ===');
       }
-      
+
       // First try: exact tag match or empty tag or null tag
       List<Map<String, dynamic>> results = [];
       if (koreanTag != null && koreanTag.isNotEmpty) {
@@ -544,45 +561,45 @@ class DictionaryService {
   /// Convert Kiwi morpheme tags to Korean dictionary tags
   String? _convertKiwiTagToKorean(String kiwiTag) {
     const tagMap = {
-      'NNG': '명사',       // General noun
-      'NNP': '명사',       // Proper noun
-      'NNB': '의존 명사',  // Dependent noun
-      'NP': '대명사',      // Pronoun
-      'NR': '수사',        // Numeral
-      'VV': '동사',        // Verb
-      'VA': '형용사',      // Adjective
+      'NNG': '명사', // General noun
+      'NNP': '명사', // Proper noun
+      'NNB': '의존 명사', // Dependent noun
+      'NP': '대명사', // Pronoun
+      'NR': '수사', // Numeral
+      'VV': '동사', // Verb
+      'VA': '형용사', // Adjective
       'VX': '보조 형용사', // Auxiliary verb (treated as adjective)
-      'VCP': '품사 없음',  // Positive copula
-      'VCN': '품사 없음',  // Negative copula
-      'MM': '관형사',      // Determiner
-      'MAG': '부사',       // Adverb (general)
-      'MAJ': '부사',       // Adverb (conjunctive)
-      'IC': '감탄사',      // Interjection
-      'JKS': '조사',       // Subject particle
-      'JKC': '조사',       // Predicative particle
-      'JKG': '조사',       // Attributive particle
-      'JKO': '조사',       // Object particle
-      'JKB': '조사',       // Adverbial particle
-      'JKV': '조사',       // Vocative particle
-      'JKQ': '조사',       // Quotative particle
-      'JX': '조사',        // Postposition
-      'JC': '조사',        // Conjunctive particle
-      'EP': '품사 없음',   // Pre-final ending
-      'EF': '품사 없음',   // Final ending
-      'EC': '품사 없음',   // Connective ending
-      'ETN': '품사 없음',  // Nominalizing ending
-      'ETM': '품사 없음',  // Adnominal ending
-      'XPN': '접사',       // Prefix
-      'XSN': '접사',       // Noun suffix
-      'XSV': '접사',       // Verb suffix
-      'XSA': '접사',       // Adjective suffix
-      'XR': '어근',        // Root
-      'SF': '품사 없음',   // Terminal punctuation
-      'SP': '품사 없음',   // Separator
-      'SS': '품사 없음',   // Quote mark
-      'SL': '품사 없음',   // Alphabet
-      'SH': '품사 없음',   // Hanja
-      'SN': '품사 없음',   // Number
+      'VCP': '품사 없음', // Positive copula
+      'VCN': '품사 없음', // Negative copula
+      'MM': '관형사', // Determiner
+      'MAG': '부사', // Adverb (general)
+      'MAJ': '부사', // Adverb (conjunctive)
+      'IC': '감탄사', // Interjection
+      'JKS': '조사', // Subject particle
+      'JKC': '조사', // Predicative particle
+      'JKG': '조사', // Attributive particle
+      'JKO': '조사', // Object particle
+      'JKB': '조사', // Adverbial particle
+      'JKV': '조사', // Vocative particle
+      'JKQ': '조사', // Quotative particle
+      'JX': '조사', // Postposition
+      'JC': '조사', // Conjunctive particle
+      'EP': '품사 없음', // Pre-final ending
+      'EF': '품사 없음', // Final ending
+      'EC': '품사 없음', // Connective ending
+      'ETN': '품사 없음', // Nominalizing ending
+      'ETM': '품사 없음', // Adnominal ending
+      'XPN': '접사', // Prefix
+      'XSN': '접사', // Noun suffix
+      'XSV': '접사', // Verb suffix
+      'XSA': '접사', // Adjective suffix
+      'XR': '어근', // Root
+      'SF': '품사 없음', // Terminal punctuation
+      'SP': '품사 없음', // Separator
+      'SS': '품사 없음', // Quote mark
+      'SL': '품사 없음', // Alphabet
+      'SH': '품사 없음', // Hanja
+      'SN': '품사 없음', // Number
     };
     return tagMap[kiwiTag];
   }
