@@ -56,6 +56,8 @@ class DictionaryService {
     // Define the dictionary files to load (hardcoded list instead of reading AssetManifest)
     final allDictionaryFiles = [
       'assets/dictionary data/word_level01_01.json',
+      'assets/dictionary data/word_level02_01.json',
+      'assets/dictionary data/word_level02_02.json',
     ];
 
     // Filter to only include files that exist (check by trying to load)
