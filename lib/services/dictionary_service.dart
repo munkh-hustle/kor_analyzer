@@ -413,15 +413,17 @@ class DictionaryService {
                   senseDataList.isNotEmpty) {
                 var firstSense = senseDataList[0];
 
-                // Get definition
+                // Get definition - handle both string and list formats
                 var definitionData = firstSense['definition'];
-                if (definitionData != null &&
-                    definitionData is List &&
-                    definitionData.isNotEmpty) {
-                  definition = definitionData[0]['content'] ?? '';
+                if (definitionData != null) {
+                  if (definitionData is String) {
+                    definition = definitionData;
+                  } else if (definitionData is List && definitionData.isNotEmpty) {
+                    definition = definitionData[0]['content'] ?? '';
+                  }
                 }
 
-                // Get examples
+                // Get examples from examList
                 var examList = firstSense['examList'];
                 if (examList != null) {
                   List<String> exampleTexts = [];
@@ -479,6 +481,10 @@ class DictionaryService {
       final db = await database;
       print('=== Database opened successfully ===');
       
+      // Convert Kiwi tag to Korean dictionary tag if needed
+      String? koreanTag = _convertKiwiTagToKorean(tag);
+      print('=== Converted tag: $tag -> $koreanTag ===');
+      
       // First, check total count in database
       final countResult = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM dictionary'));
       print('=== Total entries in database: $countResult ===');
@@ -491,12 +497,23 @@ class DictionaryService {
       }
       
       // First try: exact tag match or empty tag or null tag
-      final List<Map<String, dynamic>> results = await db.query(
-        'dictionary',
-        where: 'word = ? AND (tag = ? OR tag = ? OR tag IS NULL)',
-        whereArgs: [word, tag, ''],
-        limit: 1,
-      );
+      List<Map<String, dynamic>> results = [];
+      if (koreanTag != null && koreanTag.isNotEmpty) {
+        results = await db.query(
+          'dictionary',
+          where: 'word = ? AND (tag = ? OR tag = ? OR tag IS NULL)',
+          whereArgs: [word, koreanTag, ''],
+          limit: 1,
+        );
+      } else {
+        // If no tag conversion, try with original tag
+        results = await db.query(
+          'dictionary',
+          where: 'word = ? AND (tag = ? OR tag = ? OR tag IS NULL)',
+          whereArgs: [word, tag, ''],
+          limit: 1,
+        );
+      }
 
       if (results.isNotEmpty) {
         print('=== Found definition with matching tag ===');
@@ -522,5 +539,51 @@ class DictionaryService {
       print('=== Error in getDefinition: $e ===');
       return null;
     }
+  }
+
+  /// Convert Kiwi morpheme tags to Korean dictionary tags
+  String? _convertKiwiTagToKorean(String kiwiTag) {
+    const tagMap = {
+      'NNG': '명사',       // General noun
+      'NNP': '명사',       // Proper noun
+      'NNB': '의존 명사',  // Dependent noun
+      'NP': '대명사',      // Pronoun
+      'NR': '수사',        // Numeral
+      'VV': '동사',        // Verb
+      'VA': '형용사',      // Adjective
+      'VX': '보조 형용사', // Auxiliary verb (treated as adjective)
+      'VCP': '품사 없음',  // Positive copula
+      'VCN': '품사 없음',  // Negative copula
+      'MM': '관형사',      // Determiner
+      'MAG': '부사',       // Adverb (general)
+      'MAJ': '부사',       // Adverb (conjunctive)
+      'IC': '감탄사',      // Interjection
+      'JKS': '조사',       // Subject particle
+      'JKC': '조사',       // Predicative particle
+      'JKG': '조사',       // Attributive particle
+      'JKO': '조사',       // Object particle
+      'JKB': '조사',       // Adverbial particle
+      'JKV': '조사',       // Vocative particle
+      'JKQ': '조사',       // Quotative particle
+      'JX': '조사',        // Postposition
+      'JC': '조사',        // Conjunctive particle
+      'EP': '품사 없음',   // Pre-final ending
+      'EF': '품사 없음',   // Final ending
+      'EC': '품사 없음',   // Connective ending
+      'ETN': '품사 없음',  // Nominalizing ending
+      'ETM': '품사 없음',  // Adnominal ending
+      'XPN': '접사',       // Prefix
+      'XSN': '접사',       // Noun suffix
+      'XSV': '접사',       // Verb suffix
+      'XSA': '접사',       // Adjective suffix
+      'XR': '어근',        // Root
+      'SF': '품사 없음',   // Terminal punctuation
+      'SP': '품사 없음',   // Separator
+      'SS': '품사 없음',   // Quote mark
+      'SL': '품사 없음',   // Alphabet
+      'SH': '품사 없음',   // Hanja
+      'SN': '품사 없음',   // Number
+    };
+    return tagMap[kiwiTag];
   }
 }
