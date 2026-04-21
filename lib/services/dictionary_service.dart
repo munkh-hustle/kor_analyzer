@@ -128,6 +128,20 @@ class DictionaryService {
     }
 
     print('Total dictionary entries inserted: $totalInserted');
+    
+    // Verify that 마음 was inserted by querying the temp database
+    print('=== Verifying 마음 in database ===');
+    final verifyResult = await tempDb.rawQuery(
+        'SELECT word, tag FROM dictionary WHERE word = ?', ['마음']);
+    if (verifyResult.isEmpty) {
+      print('=== WARNING: 마음 NOT found in database after insertion! ===');
+    } else {
+      print('=== SUCCESS: 마음 found in database with ${verifyResult.length} entries ===');
+      for (var r in verifyResult) {
+        print('===   DB entry: word="${r['word']}", tag="${r['tag']}" ===');
+      }
+    }
+    
     _initialized = true;
 
     await tempDb.close();
@@ -398,12 +412,15 @@ class DictionaryService {
 
   Future<int> _parseChannelFormat(Database db, String jsonString) async {
     int inserted = 0;
+    print('=== Starting _parseChannelFormat ===');
     Map<String, dynamic> jsonData = json.decode(jsonString);
+    print('=== JSON decoded successfully ===');
 
     // Parse and insert dictionary items
     if (jsonData.containsKey('channel') &&
         jsonData['channel'].containsKey('item')) {
       List<dynamic> items = jsonData['channel']['item'];
+      print('=== Found ${items.length} items in JSON ===');
 
       for (var item in items) {
         try {
@@ -413,6 +430,15 @@ class DictionaryService {
           if (wordInfo != null) {
             String word = wordInfo['org_word'] ?? '';
             String tag = wordInfo['sp_code_name'] ?? '';
+
+            // Debug: Log first few entries and specifically '마음'
+            if (inserted < 10 || word == '마음') {
+              print(
+                  '=== Parsed entry: word="$word" (len=${word.length}, bytes=${word.codeUnits}), tag="$tag" ===');
+            }
+            if (word == '마음') {
+              print('=== FOUND 마음! Inserting into DB ===');
+            }
 
             // Extract definition from senseInfo
             String definition = '';
@@ -455,6 +481,9 @@ class DictionaryService {
 
             // Insert into database if we have a word
             if (word.isNotEmpty) {
+              if (word == '마음') {
+                print('=== INSERTING 마음: word="$word", tag="$tag", def="${definition.substring(0, 50)}..." ===');
+              }
               await db.insert(
                   'dictionary',
                   {
@@ -465,6 +494,9 @@ class DictionaryService {
                   },
                   conflictAlgorithm: ConflictAlgorithm.ignore);
               inserted++;
+              if (word == '마음') {
+                print('=== 마음 inserted successfully! Total inserted: $inserted ===');
+              }
             }
           }
         } catch (e) {
@@ -516,13 +548,27 @@ class DictionaryService {
       // Debug: Check for encoding/whitespace issues
       if (wordCheck.isEmpty) {
         print('=== Debug: Checking for similar words ===');
-        final allWords = await db.rawQuery(
-            'SELECT word, LENGTH(word) as len FROM dictionary LIMIT 10');
-        for (var w in allWords) {
-          print('===   DB word: "${w['word']}" (len=${w['len']}) ===');
-        }
+        // Log search word details
         print('=== Search word: "$word" (len=${word.length}) ===');
         print('=== Search word bytes: ${word.codeUnits} ===');
+        
+        // Get sample of all words from DB to compare
+        final allWords = await db.rawQuery(
+            'SELECT word, LENGTH(word) as len FROM dictionary LIMIT 20');
+        print('=== First 20 words in DB: ===');
+        for (var w in allWords) {
+          final dbWord = w['word'].toString();
+          print('===   DB word: "$dbWord" (len=${w['len']}, bytes=${dbWord.codeUnits}) ===');
+        }
+        
+        // Try a LIKE query to find similar words
+        final likeResults = await db.rawQuery(
+            'SELECT word, tag FROM dictionary WHERE word LIKE ? LIMIT 10',
+            ['%$word%']);
+        print('=== LIKE query results for "%$word%": ${likeResults.length} ===');
+        for (var w in likeResults) {
+          print('===   LIKE match: "${w['word']}" (tag="${w['tag']}") ===');
+        }
       }
 
       // First try: exact tag match or empty tag or null tag
@@ -563,6 +609,27 @@ class DictionaryService {
       }
 
       print('=== No definition found for $word ===');
+      
+      // Additional debug: Show all entries with similar byte patterns
+      print('=== Additional Debug Info ===');
+      print('=== Looking for any entries that might match... ===');
+      
+      // Get a broader sample from the database
+      final sampleResults = await db.rawQuery(
+          'SELECT word, tag, LENGTH(word) as len FROM dictionary ORDER BY id LIMIT 50');
+      print('=== Sample of 50 entries from DB: ===');
+      bool foundSimilar = false;
+      for (var r in sampleResults) {
+        final dbWord = r['word'].toString();
+        if (dbWord.contains('마') || dbWord.contains('음')) {
+          print('===   SIMILAR: "${r['word']}" (tag="${r['tag']}", len=${r['len']}, bytes=${dbWord.codeUnits}) ===');
+          foundSimilar = true;
+        }
+      }
+      if (!foundSimilar) {
+        print('=== No entries containing 마 or 음 found in first 50 entries ===');
+      }
+      
       return null;
     } catch (e) {
       print('=== Error in getDefinition: $e ===');
