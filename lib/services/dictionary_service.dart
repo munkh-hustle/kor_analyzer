@@ -512,6 +512,18 @@ class DictionaryService {
         print(
             '===   Found: ${w['word']} (tag="${w['tag']}", def="${w['definition']?.toString().substring(0, 50) ?? "null"}...") ===');
       }
+      
+      // Debug: Check for encoding/whitespace issues
+      if (wordCheck.isEmpty) {
+        print('=== Debug: Checking for similar words ===');
+        final allWords = await db.rawQuery(
+            'SELECT word, LENGTH(word) as len FROM dictionary LIMIT 10');
+        for (var w in allWords) {
+          print('===   DB word: "${w['word']}" (len=${w['len']}) ===');
+        }
+        print('=== Search word: "$word" (len=${word.length}) ===');
+        print('=== Search word bytes: ${word.codeUnits} ===');
+      }
 
       // First try: exact tag match or empty tag or null tag
       List<Map<String, dynamic>> results = [];
