@@ -1,20 +1,33 @@
 // lib/widgets/dictionary_popup.dart
 import 'package:flutter/material.dart';
+import 'dart:convert';
 
 class DictionaryPopup extends StatelessWidget {
   final String word;
   final String tag;
   final String? definition;
+  final String? multilanListJson;
 
   const DictionaryPopup({
     super.key,
     required this.word,
     required this.tag,
     this.definition,
+    this.multilanListJson,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Parse multilanList if available
+    List<dynamic>? multilanList;
+    if (multilanListJson != null && multilanListJson!.isNotEmpty) {
+      try {
+        multilanList = json.decode(multilanListJson!);
+      } catch (e) {
+        print('Error parsing multilanList: $e');
+      }
+    }
+
     return Dialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -62,7 +75,80 @@ class DictionaryPopup extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             
-            // Definition
+            // Multi-language translations
+            if (multilanList != null && multilanList.isNotEmpty) ...[
+              const Text(
+                '다국어 번역',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: multilanList.map((item) {
+                    final translation = item['multi_translation'] ?? '';
+                    final multiDef = item['multi_definition'] ?? '';
+                    final nationCodeName = item['nation_code_name'] ?? '';
+                    
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                _getLanguageFlag(nationCodeName),
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                nationCodeName,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          if (translation.isNotEmpty)
+                            Text(
+                              translation,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          if (multiDef.isNotEmpty)
+                            Text(
+                              multiDef,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[700],
+                                height: 1.5,
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            
+            // Korean Definition
             const Text(
               '뜻',
               style: TextStyle(
@@ -86,14 +172,9 @@ class DictionaryPopup extends StatelessWidget {
                         color: Colors.grey[600],
                       ),
                     )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: _buildDefinitionParts(definition!).map((part) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: part,
-                        );
-                      }).toList(),
+                  : Text(
+                      definition!,
+                      style: const TextStyle(fontSize: 15, height: 1.5),
                     ),
             ),
             
@@ -126,50 +207,21 @@ class DictionaryPopup extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildDefinitionParts(String definition) {
-    List<Widget> parts = [];
-    
-    // Split by double newline to separate language sections
-    final lines = definition.split('\n\n');
-    
-    for (var line in lines) {
-      if (line.startsWith('🇲🇳')) {
-        parts.add(_buildLanguageSection('몽골어', line.substring(3).replaceFirst('몽골어: ', ''), Colors.green));
-      } else if (line.startsWith('🇬🇧')) {
-        parts.add(_buildLanguageSection('영어', line.substring(3).replaceFirst('영어: ', ''), Colors.blue));
-      } else if (line.startsWith('🇰🇷')) {
-        parts.add(_buildLanguageSection('한국어', line.substring(3).replaceFirst('한국어: ', ''), Colors.red));
-      } else {
-        // Fallback for other formats
-        parts.add(Text(
-          line,
-          style: const TextStyle(fontSize: 15, height: 1.5),
-        ));
-      }
+  String _getLanguageFlag(String nationCodeName) {
+    switch (nationCodeName) {
+      case '영어':
+        return '🇬🇧';
+      case '몽골어':
+        return '🇲🇳';
+      case '한국어':
+        return '🇰🇷';
+      case '일본어':
+        return '🇯🇵';
+      case '중국어':
+        return '🇨🇳';
+      default:
+        return '🌐';
     }
-    
-    return parts;
-  }
-
-  Widget _buildLanguageSection(String language, String text, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          language,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          text,
-          style: const TextStyle(fontSize: 15, height: 1.5),
-        ),
-      ],
-    );
   }
 
   String _getTagDescription(String tag) {
@@ -188,6 +240,6 @@ class DictionaryPopup extends StatelessWidget {
   }
 
   String _getExample(String word) {
-    return '“$word”';
+    return '"$word"';
   }
 }
