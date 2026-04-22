@@ -7,13 +7,17 @@ class DictionaryPopup extends StatelessWidget {
   final String tag;
   final String? definition;
   final String? multilanListJson;
-
+  final String? fullSenseInfoJson;
+  final String? gubun;
+  
   const DictionaryPopup({
     super.key,
     required this.word,
     required this.tag,
     this.definition,
     this.multilanListJson,
+    this.fullSenseInfoJson,
+    this.gubun,
   });
 
   @override
@@ -22,6 +26,7 @@ class DictionaryPopup extends StatelessWidget {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FocusScope.of(context).unfocus();
     });
+    
     // Parse multilanList if available
     List<dynamic>? multilanList;
     if (multilanListJson != null && multilanListJson!.isNotEmpty) {
@@ -29,6 +34,25 @@ class DictionaryPopup extends StatelessWidget {
         multilanList = json.decode(multilanListJson!);
       } catch (e) {
         print('Error parsing multilanList: $e');
+      }
+    }
+    
+    // Parse full sense info if available
+    Map<String, dynamic>? senseInfo;
+    List<dynamic>? examList2;
+    List<dynamic>? examList3;
+    if (fullSenseInfoJson != null && fullSenseInfoJson!.isNotEmpty) {
+      try {
+        senseInfo = json.decode(fullSenseInfoJson!);
+        final senseDataList = senseInfo?['senseDataList'] as List?;
+        if (senseDataList != null && senseDataList.isNotEmpty) {
+          final firstSense = senseDataList[0] as Map?;
+          final examList = firstSense?['examList'] as Map?;
+          examList2 = examList?['examList2'] as List?;
+          examList3 = examList?['examList3'] as List?;
+        }
+      } catch (e) {
+        print('Error parsing fullSenseInfo: $e');
       }
     }
 
@@ -62,20 +86,42 @@ class DictionaryPopup extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                _getTagDescription(tag),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.blue[800],
-                  fontWeight: FontWeight.w500,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    _getTagDescription(tag),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue[800],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
-              ),
+                if (gubun != null && gubun!.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.purple[50],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      gubun!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.purple[800],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
             const SizedBox(height: 20),
             
@@ -184,27 +230,90 @@ class DictionaryPopup extends StatelessWidget {
             
             const SizedBox(height: 20),
             
-            // Usage example placeholder
-            const Text(
-              '사용 예',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey,
+            // Usage examples from examList
+            if ((examList2 != null && examList2.isNotEmpty) || 
+                (examList3 != null && examList3.isNotEmpty)) ...[
+              const Text(
+                '사용 예',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Sentence examples (examList2)
+                    if (examList2 != null && examList2.isNotEmpty) ...[
+                      ...examList2.map((exam) {
+                        final example = exam['example']?.toString() ?? '';
+                        if (example.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            example,
+                            style: const TextStyle(fontSize: 14, height: 1.5),
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                    // Dialogue examples (examList3)
+                    if (examList3 != null && examList3.isNotEmpty) ...[
+                      if (examList2 != null && examList2.isNotEmpty)
+                        const SizedBox(height: 8),
+                      ...examList3.map((exam) {
+                        final example = exam['example']?.toString() ?? '';
+                        if (example.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            example,
+                            style: TextStyle(
+                              fontSize: 14, 
+                              height: 1.5,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                  ],
+                ),
               ),
-              child: Text(
-                '이 단어는 문장에서 ${_getExample(word)}와 같이 사용됩니다.',
-                style: const TextStyle(fontSize: 14),
+              const SizedBox(height: 20),
+            ] else ...[
+              // Fallback placeholder if no examples
+              const Text(
+                '사용 예',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
               ),
-            ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '이 단어는 문장에서 "$word"와 같이 사용됩니다.',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
           ],
         ),
       ),
@@ -241,9 +350,5 @@ class DictionaryPopup extends StatelessWidget {
       'JKB': '부사격 조사',
     };
     return descriptions[tag] ?? tag;
-  }
-
-  String _getExample(String word) {
-    return '"$word"';
   }
 }

@@ -33,9 +33,9 @@ class DictionaryService {
       // Check database version - increment version to force rebuild if needed
       // Temp DB version check: delete and recreate for testing
       // Uncomment below to force rebuild:
-      // await deleteDatabase(path);
-      // print('=== Deleted old database, will create new one ===');
-      // await _loadDictionaryFromJson(path);
+      await deleteDatabase(path);
+      print('=== Deleted old database, will create new one ===');
+      await _loadDictionaryFromJson(path);
     }
 
     return await openDatabase(
@@ -452,14 +452,13 @@ class DictionaryService {
             String word = wordInfo['org_word'] ?? '';
             String tag = wordInfo['sp_code_name'] ?? '';
 
-            // Trim whitespace from word and tag to ensure clean data
-            word = word.trim();
+            // Extract wordInfo fields\n            String gubun = wordInfo['gubun'] ?? '';\n            String supNo = wordInfo['sup_no'] ?? '';\n            String wordNo = wordInfo['word_no'] ?? '';\n            String imCnt = wordInfo['im_cnt'] ?? '';\n\n            // Trim whitespace from word and tag to ensure clean data\n            word = word.trim();
             tag = tag.trim();
 
             // Debug: Log first few entries and specifically '마음'
             if (inserted < 10 || word == '마음') {
               print(
-                  '=== Parsed entry: word="$word" (len=${word.length}, bytes=${word.codeUnits}), tag="$tag" ===');
+                  '=== Parsed entry: word="$word" (len=${word.length}, bytes=${word.codeUnits}), tag="$tag", gubun="$gubun" ===');
             }
             if (word == '마음') {
               print('=== FOUND 마음! Inserting into DB ===');
@@ -469,8 +468,16 @@ class DictionaryService {
             String definition = '';
             String examples = '';
             String multilanListJson = '';
+            String fullSenseInfoJson = '';
 
             if (senseInfo != null) {
+              // Store full sense info as JSON for later retrieval
+              try {
+                fullSenseInfoJson = json.encode(senseInfo);
+              } catch (e) {
+                print('Error encoding senseInfo: $e');
+              }
+
               var senseDataList = senseInfo['senseDataList'];
               if (senseDataList != null &&
                   senseDataList is List &&
@@ -519,7 +526,7 @@ class DictionaryService {
             if (word.isNotEmpty) {
               if (word == '마음') {
                 final defPreview = definition.length > 50 ? definition.substring(0, 50) : definition;
-                print('=== INSERTING 마음: word="$word", tag="$tag", def="$defPreview...", multilan=${multilanListJson.isNotEmpty ? "yes" : "no"} ===');
+                print('=== INSERTING 마음: word="$word", tag="$tag", gubun="$gubun", def="$defPreview...", multilan=${multilanListJson.isNotEmpty ? "yes" : "no"}, sense_info=${fullSenseInfoJson.isNotEmpty ? "yes" : "no"} ===');
               }
               await db.insert(
                   'dictionary',
@@ -529,6 +536,11 @@ class DictionaryService {
                     'definition': definition,
                     'examples': examples,
                     'multilan_list': multilanListJson,
+                    'gubun': gubun,
+                    'sup_no': supNo,
+                    'word_no': wordNo,
+                    'im_cnt': imCnt,
+                    'full_sense_info': fullSenseInfoJson,
                   },
                   conflictAlgorithm: ConflictAlgorithm.ignore);
               inserted++;
@@ -554,7 +566,12 @@ class DictionaryService {
         tag TEXT,
         definition TEXT,
         examples TEXT,
-        multilan_list TEXT
+        multilan_list TEXT,
+        gubun TEXT,
+        sup_no TEXT,
+        word_no TEXT,
+        im_cnt TEXT,
+        full_sense_info TEXT
       )
     ''');
   }
@@ -646,10 +663,73 @@ class DictionaryService {
       }
 
       if (results.isNotEmpty) {
-        print('=== Found definition with matching tag ===');
+        // Check if this is a grammar/expression entry (starts with hyphen)
+        // If so, prefer it over regular noun/verb entries
+        final firstResult = results.first;
+        final wordValue = firstResult['word']?.toString() ?? '';
+        
+        // If the matched word starts with "-" (grammar pattern), use it
+        if (wordValue.startsWith('-')) {
+          print('=== Found definition with matching tag (grammar pattern) ===');
+          return {
+            'definition': results.first['definition'] as String?,
+            'multilanList': results.first['multilan_list'] as String?,
+            'fullSenseInfo': results.first['full_sense_info'] as String?,
+            'gubun': results.first['gubun'] as String?,
+            'supNo': results.first['sup_no'] as String?,
+            'wordNo': results.first['word_no'] as String?,
+            'imCnt': results.first['im_cnt'] as String?,
+          };
+        }
+        
+        // For non-hyphenated words, check if there's a better suffix match
+        // This helps when searching for "은" which could match "은" (silver) or be part of "-은 결과"
+        print('=== Found exact match "$wordValue", checking for grammar pattern suffix matches... ===');
+        
+        // Search for entries ending with this word that start with "-" (grammar patterns)
+        final List<Map<String, dynamic>> grammarSuffixResults = await db.rawQuery(
+          'SELECT * FROM dictionary WHERE word LIKE ? AND word LIKE ? LIMIT 5',
+          ['%$searchWord', '-%'],
+        );
+        
+        if (grammarSuffixResults.isNotEmpty) {
+          print('=== Found ${grammarSuffixResults.length} grammar patterns ending with "$searchWord" ===');
+          // Find the best match - prefer shortest grammar pattern that ends with searchWord
+          Map<String, dynamic>? bestGrammarMatch;
+          for (var match in grammarSuffixResults) {
+            final w = match['word'].toString();
+            if (w.endsWith(searchWord)) {
+              // Prefer exact suffix match (e.g., "-은 결과" for "은")
+              if (w.contains(searchWord) && w.startsWith('-')) {
+                bestGrammarMatch = match;
+                break;
+              }
+            }
+          }
+          bestGrammarMatch ??= grammarSuffixResults.first;
+          print('=== Returning grammar pattern match: "${bestGrammarMatch['word']}" (tag="${bestGrammarMatch['tag']}") ===');
+          return {
+            'definition': bestGrammarMatch['definition'] as String?,
+            'multilanList': bestGrammarMatch['multilan_list'] as String?,
+            'matchedWord': bestGrammarMatch['word'] as String?,
+            'fullSenseInfo': bestGrammarMatch['full_sense_info'] as String?,
+            'gubun': bestGrammarMatch['gubun'] as String?,
+            'supNo': bestGrammarMatch['sup_no'] as String?,
+            'wordNo': bestGrammarMatch['word_no'] as String?,
+            'imCnt': bestGrammarMatch['im_cnt'] as String?,
+          };
+        }
+        
+        // No grammar pattern found, return the original exact match
+        print('=== Found definition with matching tag (exact match) ===');
         return {
           'definition': results.first['definition'] as String?,
           'multilanList': results.first['multilan_list'] as String?,
+          'fullSenseInfo': results.first['full_sense_info'] as String?,
+          'gubun': results.first['gubun'] as String?,
+          'supNo': results.first['sup_no'] as String?,
+          'wordNo': results.first['word_no'] as String?,
+          'imCnt': results.first['im_cnt'] as String?,
         };
       }
 
@@ -666,6 +746,11 @@ class DictionaryService {
         return {
           'definition': fallbackResults.first['definition'] as String?,
           'multilanList': fallbackResults.first['multilan_list'] as String?,
+          'fullSenseInfo': fallbackResults.first['full_sense_info'] as String?,
+          'gubun': fallbackResults.first['gubun'] as String?,
+          'supNo': fallbackResults.first['sup_no'] as String?,
+          'wordNo': fallbackResults.first['word_no'] as String?,
+          'imCnt': fallbackResults.first['im_cnt'] as String?,
         };
       }
 
@@ -688,6 +773,11 @@ class DictionaryService {
           'definition': bestMatch['definition'] as String?,
           'multilanList': bestMatch['multilan_list'] as String?,
           'matchedWord': bestMatch['word'] as String?, // Include the matched word for display
+          'fullSenseInfo': bestMatch['full_sense_info'] as String?,
+          'gubun': bestMatch['gubun'] as String?,
+          'supNo': bestMatch['sup_no'] as String?,
+          'wordNo': bestMatch['word_no'] as String?,
+          'imCnt': bestMatch['im_cnt'] as String?,
         };
       }
 
@@ -720,6 +810,11 @@ class DictionaryService {
           'definition': bestSuffixMatch['definition'] as String?,
           'multilanList': bestSuffixMatch['multilan_list'] as String?,
           'matchedWord': bestSuffixMatch['word'] as String?,
+          'fullSenseInfo': bestSuffixMatch['full_sense_info'] as String?,
+          'gubun': bestSuffixMatch['gubun'] as String?,
+          'supNo': bestSuffixMatch['sup_no'] as String?,
+          'wordNo': bestSuffixMatch['word_no'] as String?,
+          'imCnt': bestSuffixMatch['im_cnt'] as String?,
         };
       }
 
