@@ -9,7 +9,7 @@ class DictionaryPopup extends StatelessWidget {
   final String? multilanListJson;
   final String? fullSenseInfoJson;
   final String? gubun;
-  
+
   const DictionaryPopup({
     super.key,
     required this.word,
@@ -26,7 +26,7 @@ class DictionaryPopup extends StatelessWidget {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FocusScope.of(context).unfocus();
     });
-    
+
     // Parse multilanList if available
     List<dynamic>? multilanList;
     if (multilanListJson != null && multilanListJson!.isNotEmpty) {
@@ -36,7 +36,7 @@ class DictionaryPopup extends StatelessWidget {
         print('Error parsing multilanList: $e');
       }
     }
-    
+
     // Parse full sense info if available
     Map<String, dynamic>? senseInfo;
     List<dynamic>? examList2;
@@ -56,268 +56,376 @@ class DictionaryPopup extends StatelessWidget {
       }
     }
 
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Dialog(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
       ),
+      elevation: 8,
+      shadowColor: Colors.black.withOpacity(0.2),
       child: Container(
-        padding: const EdgeInsets.all(24),
-        constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-            // Header
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    word,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+        constraints: const BoxConstraints(maxWidth: 450, maxHeight: 650),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              colorScheme.surface,
+              colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            ],
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header with gradient background
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    colorScheme.primary,
+                    colorScheme.secondary,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    _getTagDescription(tag),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.blue[800],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                if (gubun != null && gubun!.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.purple[50],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      gubun!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.purple[800],
-                        fontWeight: FontWeight.w500,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          word,
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
                       ),
-                    ),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white),
+                          onPressed: () => Navigator.pop(context),
+                          padding: const EdgeInsets.all(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildTagChip(context, _getTagDescription(tag), colorScheme),
+                      if (gubun != null && gubun!.isNotEmpty)
+                        _buildTagChip(context, gubun!, colorScheme, isSecondary: true),
+                    ],
                   ),
                 ],
-              ],
-            ),
-            const SizedBox(height: 20),
-            
-            // Multi-language translations
-            if (multilanList != null && multilanList.isNotEmpty) ...[
-              const Text(
-                '다국어 번역',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: multilanList.map((item) {
-                    final translation = item['multi_translation'] ?? '';
-                    final multiDef = item['multi_definition'] ?? '';
-                    final nationCodeName = item['nation_code_name'] ?? '';
-                    
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                _getLanguageFlag(nationCodeName),
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                nationCodeName,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          if (translation.isNotEmpty)
-                            Text(
-                              translation,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          if (multiDef.isNotEmpty)
-                            Text(
-                              multiDef,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[700],
-                                height: 1.5,
-                              ),
-                            ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            
-            // Korean Definition
-            const Text(
-              '뜻',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey,
               ),
             ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: definition == null || definition!.isEmpty
-                  ? Text(
-                      '사전에 등록되지 않은 단어입니다.',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                    )
-                  : Text(
-                      definition!,
-                      style: const TextStyle(fontSize: 15, height: 1.5),
-                    ),
-            ),
-            
-            const SizedBox(height: 20),
-            
-            // Usage examples from examList
-            if ((examList2 != null && examList2.isNotEmpty) || 
-                (examList3 != null && examList3.isNotEmpty)) ...[
-              const Text(
-                '사용 예',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
+
+            // Content
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Sentence examples (examList2)
-                    if (examList2 != null && examList2.isNotEmpty) ...[
-                      ...examList2.map((exam) {
-                        final example = exam['example']?.toString() ?? '';
-                        if (example.isEmpty) return const SizedBox.shrink();
+                    // Multi-language translations
+                    if (multilanList != null && multilanList.isNotEmpty) ...[
+                      _buildSectionHeader(context, '다국어 번역', Icons.language_rounded),
+                      const SizedBox(height: 12),
+                      ...multilanList.map((item) {
+                        final translation = item['multi_translation'] ?? '';
+                        final multiDef = item['multi_definition'] ?? '';
+                        final nationCodeName = item['nation_code_name'] ?? '';
+
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                            example,
-                            style: const TextStyle(fontSize: 14, height: 1.5),
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: colorScheme.outline.withOpacity(0.1),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      _getLanguageFlag(nationCodeName),
+                                      style: const TextStyle(fontSize: 20),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      nationCodeName,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: colorScheme.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (translation.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    translation,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                                if (multiDef.isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    multiDef,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: colorScheme.onSurfaceVariant,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                         );
                       }).toList(),
                     ],
-                    // Dialogue examples (examList3)
-                    if (examList3 != null && examList3.isNotEmpty) ...[
-                      if (examList2 != null && examList2.isNotEmpty)
-                        const SizedBox(height: 8),
-                      ...examList3.map((exam) {
-                        final example = exam['example']?.toString() ?? '';
-                        if (example.isEmpty) return const SizedBox.shrink();
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                            example,
-                            style: TextStyle(
-                              fontSize: 14, 
-                              height: 1.5,
-                              fontStyle: FontStyle.italic,
-                              color: Colors.grey[800],
+
+                    // Korean Definition
+                    _buildSectionHeader(context, '뜻', Icons.menu_book_rounded),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: colorScheme.outline.withOpacity(0.1),
+                        ),
+                      ),
+                      child: definition == null || definition!.isEmpty
+                          ? Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: colorScheme.outline,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    '사전에 등록되지 않은 단어입니다.',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: colorScheme.outline,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Text(
+                              definition!,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                height: 1.7,
+                              ),
                             ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Usage examples
+                    if ((examList2 != null && examList2.isNotEmpty) ||
+                        (examList3 != null && examList3.isNotEmpty)) ...[
+                      _buildSectionHeader(context, '사용 예', Icons.format_quote_rounded),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: colorScheme.tertiaryContainer.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: colorScheme.outline.withOpacity(0.1),
                           ),
-                        );
-                      }).toList(),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Sentence examples (examList2)
+                            if (examList2 != null && examList2.isNotEmpty) ...[
+                              ...examList2.map((exam) {
+                                final example = exam['example']?.toString() ?? '';
+                                if (example.isEmpty) return const SizedBox.shrink();
+                                return _buildExampleItem(context, example, false);
+                              }).toList(),
+                            ],
+                            // Dialogue examples (examList3)
+                            if (examList3 != null && examList3.isNotEmpty) ...[
+                              if (examList2 != null && examList2.isNotEmpty)
+                                const SizedBox(height: 12),
+                              ...examList3.map((exam) {
+                                final example = exam['example']?.toString() ?? '';
+                                if (example.isEmpty) return const SizedBox.shrink();
+                                return _buildExampleItem(context, example, true);
+                              }).toList(),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      // Fallback placeholder if no examples
+                      _buildSectionHeader(context, '사용 예', Icons.format_quote_rounded),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: colorScheme.tertiaryContainer.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.lightbulb_outline,
+                              color: colorScheme.tertiary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                '이 단어는 문장에서 "$word"와 같이 사용됩니다.',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-            ] else ...[
-              // Fallback placeholder if no examples
-              const Text(
-                '사용 예',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '이 단어는 문장에서 "$word"와 같이 사용됩니다.',
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTagChip(
+    BuildContext context,
+    String label,
+    ColorScheme colorScheme, {
+    bool isSecondary = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.3)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 18,
+          color: colorScheme.primary,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: colorScheme.onSurfaceVariant,
+            letterSpacing: 0.5,
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildExampleItem(
+    BuildContext context,
+    String example,
+    bool isDialogue,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!isDialogue) ...[
+            Container(
+              margin: const EdgeInsets.only(top: 4, right: 10),
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: colorScheme.tertiary,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ] else ...[
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 16,
+              color: colorScheme.tertiary.withOpacity(0.7),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            child: Text(
+              example,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.6,
+                fontStyle: isDialogue ? FontStyle.italic : null,
+                color: isDialogue
+                    ? colorScheme.onSurfaceVariant
+                    : colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -350,6 +458,11 @@ class DictionaryPopup extends StatelessWidget {
       'JKS': '주격 조사',
       'JKO': '목적격 조사',
       'JKB': '부사격 조사',
+      'EF': '종결 어미',
+      'EC': '연결 어미',
+      'ETN': '명사형 전성 어미',
+      'ETM': '관형형 전성 어미',
+      'JX': '보조사',
     };
     return descriptions[tag] ?? tag;
   }
