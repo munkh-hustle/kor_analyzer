@@ -18,6 +18,10 @@ class DictionaryPopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Prevent keyboard from showing when dialog opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).unfocus();
+    });
     // Parse multilanList if available
     List<dynamic>? multilanList;
     if (multilanListJson != null && multilanListJson!.isNotEmpty) {
