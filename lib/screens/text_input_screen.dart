@@ -186,7 +186,18 @@ class _TextInputScreenState extends State<TextInputScreen> {
   void _showDefinition(BuildContext context, String word, String tag, 
       KoreanReaderProvider provider) async {
     print('=== _showDefinition called for word=$word, tag=$tag ===');
-    final result = await provider.getDefinitionWithMultiLang(word, tag);
+    
+    // First try with the original word
+    var result = await provider.getDefinitionWithMultiLang(word, tag);
+    
+    // If no good result found, try combining with adjacent morphemes
+    if (result == null || result['definition'] == null) {
+      final combinedResult = await _tryCombinedWordSearch(word, tag, provider);
+      if (combinedResult != null) {
+        result = combinedResult;
+      }
+    }
+    
     print('=== _showDefinition received definition: ${result?['definition'] ?? "null"} ===');
     
     // If a matchedWord is returned (prefix match), show that in the popup
@@ -203,5 +214,42 @@ class _TextInputScreenState extends State<TextInputScreen> {
         gubun: result?['gubun'] as String?,
       ),
     );
+  }
+  
+  Future<Map<String, dynamic>?> _tryCombinedWordSearch(
+    String word, String tag, KoreanReaderProvider provider) async {
+    
+    // Get current analysis results to find adjacent morphemes
+    final results = provider.currentResults;
+    if (results.isEmpty) return null;
+    
+    // Find the index of the current word in results
+    int currentIndex = -1;
+    for (int i = 0; i < results.length; i++) {
+      final result = results[i];
+      for (var morph in result.morphemes) {
+        if (morph.text == word && morph.tag == tag) {
+          currentIndex = i;
+          break;
+        }
+      }
+      if (currentIndex >= 0) break;
+    }
+    
+    if (currentIndex < 0 || currentIndex >= results.length - 1) return null;
+    
+    // Try combining with next morpheme(s)
+    final currentResult = results[currentIndex];
+    final currentMorphIndex = currentResult.morphemes.indexWhere((m) => m.text == word && m.tag == tag);
+    
+    if (currentMorphIndex < 0 || currentMorphIndex >= currentResult.morphemes.length - 1) return null;
+    
+    // Combine current + next morpheme
+    final nextMorph = currentResult.morphemes[currentMorphIndex + 1];
+    final combinedWord = word + nextMorph.text;
+    final combinedTag = tag; // Use first morpheme's tag
+    
+    print('=== Trying combined word search: $combinedWord ($tag) ===');
+    return await provider.getDefinitionWithMultiLang(combinedWord, combinedTag);
   }
 }
