@@ -126,10 +126,10 @@ class DictionaryPopup extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             
-            // Multi-language translations
+            // Multi-language translations (English and Mongolian only)
             if (multilanList != null && multilanList.isNotEmpty) ...[
               const Text(
-                '다국어 번역',
+                'Translations',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -145,7 +145,10 @@ class DictionaryPopup extends StatelessWidget {
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: multilanList.map((item) {
+                  children: multilanList.where((item) {
+                    final nationCodeName = item['nation_code_name'] ?? '';
+                    return nationCodeName == '영어' || nationCodeName == '몽골어';
+                  }).map((item) {
                     final translation = item['multi_translation'] ?? '';
                     final multiDef = item['multi_definition'] ?? '';
                     final nationCodeName = item['nation_code_name'] ?? '';
@@ -163,7 +166,7 @@ class DictionaryPopup extends StatelessWidget {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                nationCodeName,
+                                nationCodeName == '영어' ? 'English' : 'Mongolian',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
@@ -199,9 +202,9 @@ class DictionaryPopup extends StatelessWidget {
               const SizedBox(height: 16),
             ],
             
-            // Korean Definition
+            // Definition in English/Mongolian
             const Text(
-              '뜻',
+              'Definition',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -217,7 +220,7 @@ class DictionaryPopup extends StatelessWidget {
               ),
               child: definition == null || definition!.isEmpty
                   ? Text(
-                      '사전에 등록되지 않은 단어입니다.',
+                      'Word not found in dictionary.',
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey[600],
@@ -235,7 +238,7 @@ class DictionaryPopup extends StatelessWidget {
             if ((examList2 != null && examList2.isNotEmpty) || 
                 (examList3 != null && examList3.isNotEmpty)) ...[
               const Text(
-                '사용 예',
+                'Examples',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -294,7 +297,7 @@ class DictionaryPopup extends StatelessWidget {
             ] else ...[
               // Fallback placeholder if no examples
               const Text(
-                '사용 예',
+                'Examples',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -309,7 +312,7 @@ class DictionaryPopup extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  '이 단어는 문장에서 "$word"와 같이 사용됩니다.',
+                  'This word is used as "$word" in sentences.',
                   style: const TextStyle(fontSize: 14),
                 ),
               ),
@@ -341,15 +344,18 @@ class DictionaryPopup extends StatelessWidget {
 
   String _getTagDescription(String tag) {
     final descriptions = {
-      'NNG': '일반 명사',
-      'NNP': '고유 명사',
-      'NNB': '의존 명사',
-      'VV': '동사',
-      'VA': '형용사',
-      'VX': '보조 용언',
-      'JKS': '주격 조사',
-      'JKO': '목적격 조사',
-      'JKB': '부사격 조사',
+      'NNG': 'General Noun',
+      'NNP': 'Proper Noun',
+      'NNB': 'Dependent Noun',
+      'VV': 'Verb',
+      'VA': 'Adjective',
+      'VX': 'Auxiliary Verb',
+      'JKS': 'Subject Particle',
+      'JKO': 'Object Particle',
+      'JKB': 'Adverbial Particle',
+      'JX': 'Particle',
+      'EC': 'Ending',
+      'XSV': 'Affix',
     };
     return descriptions[tag] ?? tag;
   }

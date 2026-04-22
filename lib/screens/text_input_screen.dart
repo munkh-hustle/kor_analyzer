@@ -224,32 +224,76 @@ class _TextInputScreenState extends State<TextInputScreen> {
     if (results.isEmpty) return null;
     
     // Find the index of the current word in results
-    int currentIndex = -1;
+    int resultIndex = -1;
+    int morphIndex = -1;
+    
     for (int i = 0; i < results.length; i++) {
       final result = results[i];
-      for (var morph in result.morphemes) {
-        if (morph.text == word && morph.tag == tag) {
-          currentIndex = i;
+      for (int j = 0; j < result.morphemes.length; j++) {
+        if (result.morphemes[j].text == word && result.morphemes[j].tag == tag) {
+          resultIndex = i;
+          morphIndex = j;
           break;
         }
       }
-      if (currentIndex >= 0) break;
+      if (resultIndex >= 0) break;
     }
     
-    if (currentIndex < 0 || currentIndex >= results.length - 1) return null;
+    if (resultIndex < 0) return null;
     
-    // Try combining with next morpheme(s)
-    final currentResult = results[currentIndex];
-    final currentMorphIndex = currentResult.morphemes.indexWhere((m) => m.text == word && m.tag == tag);
+    final currentResult = results[resultIndex];
+    final allMorphemes = currentResult.morphemes;
     
-    if (currentMorphIndex < 0 || currentMorphIndex >= currentResult.morphemes.length - 1) return null;
+    // Strategy 1: Try combining forward (current + next morphemes)
+    // Try up to 4 morphemes combined
+    for (int length = 2; length <= 4 && morphIndex + length <= allMorphemes.length; length++) {
+      final combinedWord = allMorphemes.sublist(morphIndex, morphIndex + length)
+          .map((m) => m.text).join('');
+      print('=== Trying combined forward: $combinedWord ===');
+      var result = await provider.getDefinitionWithMultiLang(combinedWord, tag);
+      if (result != null && result['definition'] != null) {
+        print('=== Found combined match: $combinedWord ===');
+        return result;
+      }
+    }
     
-    // Combine current + next morpheme
-    final nextMorph = currentResult.morphemes[currentMorphIndex + 1];
-    final combinedWord = word + nextMorph.text;
-    final combinedTag = tag; // Use first morpheme's tag
+    // Strategy 2: Try combining backward + forward (include previous morpheme + current + next)
+    // This helps catch patterns like "-을 뿐만 아니라" when tapping on "뿐"
+    if (morphIndex > 0) {
+      // Try including 1 previous morpheme
+      for (int backward = 1; backward <= 2 && morphIndex - backward >= 0; backward++) {
+        for (int forward = 1; forward <= 3 && morphIndex + forward <= allMorphemes.length; forward++) {
+          final combinedWord = allMorphemes.sublist(morphIndex - backward, morphIndex + forward)
+              .map((m) => m.text).join('');
+          print('=== Trying combined backward+forward: $combinedWord ===');
+          var result = await provider.getDefinitionWithMultiLang(combinedWord, tag);
+          if (result != null && result['definition'] != null) {
+            print('=== Found combined match: $combinedWord ===');
+            return result;
+          }
+        }
+      }
+    }
     
-    print('=== Trying combined word search: $combinedWord ($tag) ===');
-    return await provider.getDefinitionWithMultiLang(combinedWord, combinedTag);
+    // Strategy 3: If current word is a particle/ending, try combining with previous content word
+    // This helps when tapping on "은" in "사람이었을"
+    if (morphIndex > 0 && _isGrammarTag(tag)) {
+      final prevMorph = allMorphemes[morphIndex - 1];
+      final combinedWord = prevMorph.text + word;
+      print('=== Trying grammar combination: $combinedWord ===');
+      var result = await provider.getDefinitionWithMultiLang(combinedWord, tag);
+      if (result != null && result['definition'] != null) {
+        print('=== Found grammar match: $combinedWord ===');
+        return result;
+      }
+    }
+    
+    return null;
+  }
+  
+  bool _isGrammarTag(String tag) {
+    // Tags that are typically grammar particles/endings
+    final grammarTags = ['JKS', 'JKO', 'JKB', 'JX', 'JC', 'EP', 'EF', 'EC', 'ETN', 'ETM', 'XSV', 'XSA', 'VCP'];
+    return grammarTags.contains(tag);
   }
 }
