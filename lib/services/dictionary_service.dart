@@ -118,10 +118,6 @@ class DictionaryService {
           print('Warning: Unknown JSON format in $filePath');
         }
 
-        // Clear jsonString reference to allow garbage collection
-        // ignore: unnecessary_statements
-        jsonString;
-
         print(
             'Inserted $fileInserted entries from $filePath (File $fileCount/${dictionaryFiles.length})');
         totalInserted += fileInserted;
