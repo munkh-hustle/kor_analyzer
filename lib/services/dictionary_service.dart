@@ -605,13 +605,24 @@ class DictionaryService {
           print('===   DB word: "$dbWord" (len=${w['len']}, bytes=${dbWord.codeUnits}) ===');
         }
         
-        // Try a LIKE query to find similar words
+        // Try a LIKE query to find similar words (contains searchWord anywhere)
         final likeResults = await db.rawQuery(
             'SELECT word, tag FROM dictionary WHERE word LIKE ? LIMIT 10',
             ['%$searchWord%']);
         print('=== LIKE query results for "%$searchWord%": ${likeResults.length} ===');
         for (var w in likeResults) {
           print('===   LIKE match: "${w['word']}" (tag="${w['tag']}") ===');
+        }
+        
+        // Also try suffix search early to show in debug output
+        final suffixDebugResults = await db.rawQuery(
+            'SELECT word, tag FROM dictionary WHERE word LIKE ? LIMIT 5',
+            ['%$searchWord']);
+        if (suffixDebugResults.isNotEmpty) {
+          print('=== Suffix matches (words ending with "$searchWord"): ${suffixDebugResults.length} ===');
+          for (var w in suffixDebugResults) {
+            print('===   Suffix match: "${w['word']}" (tag="${w['tag']}") ===');
+          }
         }
       }
 
@@ -677,6 +688,38 @@ class DictionaryService {
           'definition': bestMatch['definition'] as String?,
           'multilanList': bestMatch['multilan_list'] as String?,
           'matchedWord': bestMatch['word'] as String?, // Include the matched word for display
+        };
+      }
+
+      // If prefix search fails, try searching for words that END with the search word
+      // This helps when looking up inflected forms like "자는" which should match "-자는"
+      print('=== No prefix match found, trying suffix search for "$searchWord"... ===');
+      final List<Map<String, dynamic>> suffixResults = await db.query(
+        'dictionary',
+        where: 'word LIKE ?',
+        whereArgs: ['%$searchWord'],
+        limit: 5,
+      );
+
+      if (suffixResults.isNotEmpty) {
+        print('=== Found ${suffixResults.length} words ending with "$searchWord" ===');
+        // Prefer exact suffix match (word ends with searchWord and has prefix like "-")
+        Map<String, dynamic>? bestSuffixMatch;
+        for (var match in suffixResults) {
+          final word = match['word'].toString();
+          // Prefer matches that are just a prefix + searchWord (e.g., "-자는" for "자는")
+          if (word.endsWith(searchWord) && word.length == searchWord.length + 1) {
+            bestSuffixMatch = match;
+            break;
+          }
+        }
+        // If no perfect suffix match, use the first result
+        bestSuffixMatch ??= suffixResults.first;
+        print('=== Returning best suffix match: "${bestSuffixMatch['word']}" (tag="${bestSuffixMatch['tag']}") ===');
+        return {
+          'definition': bestSuffixMatch['definition'] as String?,
+          'multilanList': bestSuffixMatch['multilan_list'] as String?,
+          'matchedWord': bestSuffixMatch['word'] as String?,
         };
       }
 
