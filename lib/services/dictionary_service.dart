@@ -596,6 +596,12 @@ class DictionaryService {
       String? koreanTag = _convertKiwiTagToKorean(tag);
       print('=== Converted tag: $tag -> $koreanTag ===');
 
+      // Normalize the search word for grammar endings (EF, EP, EC, ETN, ETM tags)
+      // Kiwi analyzer may return decomposed jamo forms that need to be converted
+      // to match dictionary entries which use compatibility jamo with hyphen prefix
+      final normalizedSearchWord = _normalizeGrammarEnding(searchWord, tag);
+      print('=== Normalized search word: "$searchWord" -> "$normalizedSearchWord" ===');
+
       // First, check total count in database
       final countResult = Sqflite.firstIntValue(
           await db.rawQuery('SELECT COUNT(*) FROM dictionary'));
@@ -604,8 +610,8 @@ class DictionaryService {
       // Check if word exists at all (with detailed logging)
       final wordCheck = await db.rawQuery(
           'SELECT word, tag, definition, multilan_list FROM dictionary WHERE word = ? LIMIT 5',
-          [searchWord]);
-      print('=== Words matching "$searchWord": ${wordCheck.length} ===');
+          [normalizedSearchWord]);
+      print('=== Words matching "$normalizedSearchWord": ${wordCheck.length} ===');
       for (var w in wordCheck) {
         final defStr = w['definition']?.toString() ?? 'null';
         final defPreview = defStr.length > 50 ? defStr.substring(0, 50) : defStr;
@@ -617,8 +623,8 @@ class DictionaryService {
       if (wordCheck.isEmpty) {
         print('=== Debug: Checking for similar words ===');
         // Log search word details
-        print('=== Search word: "$searchWord" (len=${searchWord.length}) ===');
-        print('=== Search word bytes: ${searchWord.codeUnits} ===');
+        print('=== Search word: "$normalizedSearchWord" (len=${normalizedSearchWord.length}) ===');
+        print('=== Search word bytes: ${normalizedSearchWord.codeUnits} ===');
         
         // Get sample of all words from DB to compare
         final allWords = await db.rawQuery(
@@ -632,8 +638,8 @@ class DictionaryService {
         // Try a LIKE query to find similar words (contains searchWord anywhere)
         final likeResults = await db.rawQuery(
             'SELECT word, tag FROM dictionary WHERE word LIKE ? LIMIT 10',
-            ['%$searchWord%']);
-        print('=== LIKE query results for "%$searchWord%": ${likeResults.length} ===');
+            ['%$normalizedSearchWord%']);
+        print('=== LIKE query results for "%$normalizedSearchWord%": ${likeResults.length} ===');
         for (var w in likeResults) {
           print('===   LIKE match: "${w['word']}" (tag="${w['tag']}") ===');
         }
@@ -641,9 +647,9 @@ class DictionaryService {
         // Also try suffix search early to show in debug output
         final suffixDebugResults = await db.rawQuery(
             'SELECT word, tag FROM dictionary WHERE word LIKE ? LIMIT 5',
-            ['%$searchWord']);
+            ['%$normalizedSearchWord']);
         if (suffixDebugResults.isNotEmpty) {
-          print('=== Suffix matches (words ending with "$searchWord"): ${suffixDebugResults.length} ===');
+          print('=== Suffix matches (words ending with "$normalizedSearchWord"): ${suffixDebugResults.length} ===');
           for (var w in suffixDebugResults) {
             print('===   Suffix match: "${w['word']}" (tag="${w['tag']}") ===');
           }
@@ -656,15 +662,15 @@ class DictionaryService {
         results = await db.query(
           'dictionary',
           where: 'word = ? AND (tag = ? OR tag = ? OR tag IS NULL)',
-          whereArgs: [searchWord, koreanTag, ''],
+          whereArgs: [normalizedSearchWord, koreanTag, ''],
           limit: 1,
         );
       } else {
-        // If no tag conversion, try with original tag
+        // If no tag conversion, try with original tag (but use normalized search word)
         results = await db.query(
           'dictionary',
           where: 'word = ? AND (tag = ? OR tag = ? OR tag IS NULL)',
-          whereArgs: [searchWord, tag, ''],
+          whereArgs: [normalizedSearchWord, tag, ''],
           limit: 1,
         );
       }
@@ -696,18 +702,18 @@ class DictionaryService {
         // Search for entries ending with this word that start with "-" (grammar patterns)
         final List<Map<String, dynamic>> grammarSuffixResults = await db.rawQuery(
           'SELECT * FROM dictionary WHERE word LIKE ? AND word LIKE ? LIMIT 5',
-          ['%$searchWord', '-%'],
+          ['%$normalizedSearchWord', '-%'],
         );
         
         if (grammarSuffixResults.isNotEmpty) {
-          print('=== Found ${grammarSuffixResults.length} grammar patterns ending with "$searchWord" ===');
+          print('=== Found ${grammarSuffixResults.length} grammar patterns ending with "$normalizedSearchWord" ===');
           // Find the best match - prefer shortest grammar pattern that ends with searchWord
           Map<String, dynamic>? bestGrammarMatch;
           for (var match in grammarSuffixResults) {
             final w = match['word'].toString();
-            if (w.endsWith(searchWord)) {
+            if (w.endsWith(normalizedSearchWord)) {
               // Prefer exact suffix match (e.g., "-은 결과" for "은")
-              if (w.contains(searchWord) && w.startsWith('-')) {
+              if (w.contains(normalizedSearchWord) && w.startsWith('-')) {
                 bestGrammarMatch = match;
                 break;
               }
@@ -903,5 +909,74 @@ class DictionaryService {
       'SN': '품사 없음', // Number
     };
     return tagMap[kiwiTag];
+  }
+
+  /// Normalize grammar ending forms from Kiwi analyzer to match dictionary entries
+  /// 
+  /// Kiwi analyzer may return decomposed jamo forms for grammar endings, e.g.:
+  /// - 'ᆯ까요' (U+11AF + U+AE4C + U+C694) where U+11AF is HANGUL JONGSEONG RIEUL
+  /// 
+  /// Dictionary entries use compatibility jamo with hyphen prefix:
+  /// - '-ㄹ까요' (U+002D + U+3139 + U+AE4C + U+C694) where U+3139 is HANGUL LETTER RIEUL
+  /// 
+  /// This method converts modern Hangul jamo (U+11A8-U+11C7) to compatibility jamo (U+3131-U+314E)
+  /// and adds a hyphen prefix for grammar ending tags.
+  String _normalizeGrammarEnding(String word, String tag) {
+    // Only normalize for grammar ending tags
+    if (!['EF', 'EP', 'EC', 'ETN', 'ETM'].contains(tag)) {
+      return word;
+    }
+
+    // Mapping from modern jongseong (U+11A8-U+11C7) to compatibility jamo
+    final jongseongToCompatibility = {
+      0x11A8: 0x3131,  // ㄱ
+      0x11A9: 0x3132,  // ㄲ
+      0x11AA: 0x3134,  // ㄴ
+      0x11AB: 0x3137,  // ㄷ
+      0x11AC: 0x3138,  // ㄸ
+      0x11AD: 0x3139,  // ㄹ
+      0x11AE: 0x313A,  // ㄺ
+      0x11AF: 0x3139,  // ㄹ (HANGUL JONGSEONG RIEUL -> HANGUL LETTER RIEUL)
+      0x11B0: 0x313A,  // ㄺ
+      0x11B1: 0x313B,  // ㄻ
+      0x11B2: 0x313C,  // ㄼ
+      0x11B3: 0x313D,  // ㄽ
+      0x11B4: 0x313E,  // ㄾ
+      0x11B5: 0x313F,  // ㄿ
+      0x11B6: 0x3140,  // ㅀ
+      0x11B7: 0x3141,  // ㅁ
+      0x11B8: 0x3142,  // ㅂ
+      0x11B9: 0x3144,  // ㅃ
+      0x11BA: 0x3145,  // ㅅ
+      0x11BB: 0x3146,  // ㅆ
+      0x11BC: 0x3147,  // ㅇ
+      0x11BD: 0x3148,  // ㅈ
+      0x11BE: 0x314A,  // ㅉ
+      0x11BF: 0x314B,  // ㅊ
+      0x11C0: 0x314C,  // ㅋ
+      0x11C1: 0x314D,  // ㅌ
+      0x11C2: 0x314E,  // ㅍ
+      0x11C3: 0x314F,  // ㅎ
+    };
+
+    StringBuffer result = StringBuffer();
+    
+    // Add hyphen prefix for grammar patterns
+    result.write('-');
+    
+    for (int i = 0; i < word.length; i++) {
+      final code = word.codeUnitAt(i);
+      
+      // Check if this is a modern jongseong character (U+11A8-U+11C7)
+      if (code >= 0x11A8 && code <= 0x11C7) {
+        final compatibilityCode = jongseongToCompatibility[code] ?? code;
+        result.writeCharCode(compatibilityCode);
+      } else {
+        // Keep other characters as-is (syllables, vowels, etc.)
+        result.writeCharCode(code);
+      }
+    }
+    
+    return result.toString();
   }
 }
