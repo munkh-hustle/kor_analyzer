@@ -33,9 +33,9 @@ class DictionaryService {
       // Check database version - increment version to force rebuild if needed
       // Temp DB version check: delete and recreate for testing
       // Uncomment below to force rebuild:
-      await deleteDatabase(path);
-      print('=== Deleted old database, will create new one ===');
-      await _loadDictionaryFromJson(path);
+      // await deleteDatabase(path);
+      // print('=== Deleted old database, will create new one ===');
+      // await _loadDictionaryFromJson(path);
     }
 
     return await openDatabase(
