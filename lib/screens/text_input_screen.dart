@@ -47,7 +47,7 @@ class _TextInputScreenState extends State<TextInputScreen>
             children: [
               Icon(Icons.info_outline, color: Colors.white),
               SizedBox(width: 12),
-              Text('분석할 텍스트를 입력해주세요.'),
+              Text('Шинжилгээ хийх текстийг оруулна уу.'),
             ],
           ),
           backgroundColor: Theme.of(context).colorScheme.primary,
@@ -126,7 +126,7 @@ class _TextInputScreenState extends State<TextInputScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            '한국어 텍스트 입력',
+                            'Солонгос текст оруулах',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -134,7 +134,7 @@ class _TextInputScreenState extends State<TextInputScreen>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '분석할 문장이나 단어를 입력하세요',
+                            'Шинжилгээ хийх текстийг оруулна уу',
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.grey[600],
@@ -152,10 +152,12 @@ class _TextInputScreenState extends State<TextInputScreen>
                   textInputAction: TextInputAction.newline,
                   style: const TextStyle(fontSize: 16, height: 1.5),
                   decoration: InputDecoration(
-                    hintText: '여기에 한국어 텍스트를 입력하거나 붙여넣으세요...',
+                    hintText:
+                        'Солонгос текстийг энд оруулах эсвэл буулгана уу...',
                     hintStyle: TextStyle(color: Colors.grey[400]),
                     filled: true,
-                    fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    fillColor:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
                     prefixIcon: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Icon(
@@ -169,27 +171,27 @@ class _TextInputScreenState extends State<TextInputScreen>
                 Row(
                   children: [
                     Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _analyzeText,
-                        icon: const Icon(Icons.auto_awesome_rounded),
-                        label: const Text('분석하기'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primary,
+                      child: OutlinedButton.icon(
+                        onPressed: _clearText,
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        label: const Text('Устгах'),
+                        style: OutlinedButton.styleFrom(
                           foregroundColor:
-                              Theme.of(context).colorScheme.onPrimary,
+                              Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _clearText,
-                        icon: const Icon(Icons.delete_outline_rounded),
-                        label: const Text('지우기'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor:
+                      child: ElevatedButton.icon(
+                        onPressed: _analyzeText,
+                        icon: const Icon(Icons.auto_awesome_rounded),
+                        label: const Text('Шинжилгээ хийх'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
                               Theme.of(context).colorScheme.primary,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.onPrimary,
                         ),
                       ),
                     ),
@@ -213,7 +215,7 @@ class _TextInputScreenState extends State<TextInputScreen>
                 }
 
                 if (provider.isAnalyzing) {
-                  return _buildLoadingState(context, '분석 중...');
+                  return _buildLoadingState(context, 'шинжилгээ хийх...');
                 }
 
                 if (!_showResults || provider.currentResults.isEmpty) {
@@ -283,7 +285,7 @@ class _TextInputScreenState extends State<TextInputScreen>
           ),
           const SizedBox(height: 24),
           Text(
-            '텍스트를 입력하고 분석 버튼을 눌러주세요.',
+            'Текстийг оруулаад дүн шинжилгээ хийх товчийг дарна уу.',
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontSize: 16,
@@ -292,7 +294,7 @@ class _TextInputScreenState extends State<TextInputScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            '형태소 분석과 사전 검색이 가능합니다.',
+            'Өгүүлбэрийн шинжилгээ болон толь бичгийн хайлт хийх боломжтой..',
             style: TextStyle(
               color: Theme.of(context).colorScheme.outline,
               fontSize: 14,
@@ -312,8 +314,7 @@ class _TextInputScreenState extends State<TextInputScreen>
 
     // If no good result found, try combining with adjacent morphemes
     if (result == null || result['definition'] == null) {
-      final combinedResult =
-          await _tryCombinedWordSearch(word, tag, provider);
+      final combinedResult = await _tryCombinedWordSearch(word, tag, provider);
       if (combinedResult != null) {
         result = combinedResult;
       }
@@ -362,8 +363,8 @@ class _TextInputScreenState extends State<TextInputScreen>
 
     // Try combining with next morpheme(s)
     final currentResult = results[currentIndex];
-    final currentMorphIndex =
-        currentResult.morphemes.indexWhere((m) => m.text == word && m.tag == tag);
+    final currentMorphIndex = currentResult.morphemes
+        .indexWhere((m) => m.text == word && m.tag == tag);
 
     if (currentMorphIndex < 0 ||
         currentMorphIndex >= currentResult.morphemes.length - 1) return null;
