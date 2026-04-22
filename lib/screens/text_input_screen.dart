@@ -12,30 +12,61 @@ class TextInputScreen extends StatefulWidget {
   State<TextInputScreen> createState() => _TextInputScreenState();
 }
 
-class _TextInputScreenState extends State<TextInputScreen> {
+class _TextInputScreenState extends State<TextInputScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   bool _showResults = false;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+  }
 
   @override
   void dispose() {
     _textController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
   void _analyzeText() {
     if (_textController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('분석할 텍스트를 입력해주세요.')),
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Text('분석할 텍스트를 입력해주세요.'),
+            ],
+          ),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
       );
       return;
     }
-    
+
     setState(() {
       _showResults = true;
     });
-    
+
     final provider = Provider.of<KoreanReaderProvider>(context, listen: false);
     provider.analyzeText(_textController.text);
+    _animationController.forward(from: 0);
   }
 
   void _clearText() {
@@ -44,19 +75,23 @@ class _TextInputScreenState extends State<TextInputScreen> {
       _showResults = false;
     });
     Provider.of<KoreanReaderProvider>(context, listen: false).clearResults();
+    _animationController.reverse();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Korean Reader'),
-        elevation: 2,
+        title: const Text(
+          'Korean Reader',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.clear_all),
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: _clearText,
-            tooltip: '모두 지우기',
+            tooltip: '초기화',
           ),
         ],
       ),
@@ -64,47 +99,98 @@ class _TextInputScreenState extends State<TextInputScreen> {
         children: [
           // Input section
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  '한국어 텍스트 입력',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.edit_note_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '한국어 텍스트 입력',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '분석할 문장이나 단어를 입력하세요',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 TextField(
                   controller: _textController,
-                  maxLines: 8,
+                  maxLines: 6,
+                  textInputAction: TextInputAction.newline,
+                  style: const TextStyle(fontSize: 16, height: 1.5),
                   decoration: InputDecoration(
                     hintText: '여기에 한국어 텍스트를 입력하거나 붙여넣으세요...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    hintStyle: TextStyle(color: Colors.grey[400]),
                     filled: true,
-                    fillColor: Colors.grey[50],
+                    fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Icon(
+                        Icons.text_fields_rounded,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
-                      child: ElevatedButton(
+                      child: ElevatedButton.icon(
                         onPressed: _analyzeText,
+                        icon: const Icon(Icons.auto_awesome_rounded),
+                        label: const Text('분석하기'),
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.onPrimary,
                         ),
-                        child: const Text('분석하기'),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: OutlinedButton(
+                      child: OutlinedButton.icon(
                         onPressed: _clearText,
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        label: const Text('지우기'),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          foregroundColor:
+                              Theme.of(context).colorScheme.primary,
                         ),
-                        child: const Text('지우기'),
                       ),
                     ),
                   ],
@@ -112,68 +198,36 @@ class _TextInputScreenState extends State<TextInputScreen> {
               ],
             ),
           ),
-          
+
           // Analysis results section
           Expanded(
             child: Consumer<KoreanReaderProvider>(
               builder: (context, provider, child) {
                 if (!provider.isInitialized) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const CircularProgressIndicator(),
-                        const SizedBox(height: 16),
-                        Text(
-                          provider.errorMessage.isNotEmpty
-                              ? provider.errorMessage
-                              : '초기화 중...',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ],
-                    ),
+                  return _buildLoadingState(
+                    context,
+                    provider.errorMessage.isNotEmpty
+                        ? provider.errorMessage
+                        : '초기화 중...',
                   );
                 }
-                
+
                 if (provider.isAnalyzing) {
-                  return const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('분석 중...'),
-                      ],
-                    ),
-                  );
+                  return _buildLoadingState(context, '분석 중...');
                 }
-                
+
                 if (!_showResults || provider.currentResults.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.text_fields,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          '텍스트를 입력하고 분석 버튼을 눌러주세요.',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
-                  );
+                  return _buildEmptyState(context);
                 }
-                
-                return AnalysisResultWidget(
-                  results: provider.currentResults,
-                  onWordTap: (word, tag) {
-                    _showDefinition(context, word, tag, provider);
-                  },
+
+                return FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: AnalysisResultWidget(
+                    results: provider.currentResults,
+                    onWordTap: (word, tag) {
+                      _showDefinition(context, word, tag, provider);
+                    },
+                  ),
                 );
               },
             ),
@@ -183,28 +237,97 @@ class _TextInputScreenState extends State<TextInputScreen> {
     );
   }
 
-  void _showDefinition(BuildContext context, String word, String tag, 
+  Widget _buildLoadingState(BuildContext context, String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 48,
+            height: 48,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.menu_book_rounded,
+              size: 64,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            '텍스트를 입력하고 분석 버튼을 눌러주세요.',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '형태소 분석과 사전 검색이 가능합니다.',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.outline,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDefinition(BuildContext context, String word, String tag,
       KoreanReaderProvider provider) async {
     print('=== _showDefinition called for word=$word, tag=$tag ===');
-    
+
     // First try with the original word
     var result = await provider.getDefinitionWithMultiLang(word, tag);
-    
+
     // If no good result found, try combining with adjacent morphemes
     if (result == null || result['definition'] == null) {
-      final combinedResult = await _tryCombinedWordSearch(word, tag, provider);
+      final combinedResult =
+          await _tryCombinedWordSearch(word, tag, provider);
       if (combinedResult != null) {
         result = combinedResult;
       }
     }
-    
-    print('=== _showDefinition received definition: ${result?['definition'] ?? "null"} ===');
-    
+
+    print(
+        '=== _showDefinition received definition: ${result?['definition'] ?? "null"} ===');
+
     // If a matchedWord is returned (prefix match), show that in the popup
     final displayWord = result?['matchedWord'] as String? ?? word;
-    
+
     showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (context) => DictionaryPopup(
         word: displayWord,
         tag: tag,
@@ -215,14 +338,13 @@ class _TextInputScreenState extends State<TextInputScreen> {
       ),
     );
   }
-  
+
   Future<Map<String, dynamic>?> _tryCombinedWordSearch(
-    String word, String tag, KoreanReaderProvider provider) async {
-    
+      String word, String tag, KoreanReaderProvider provider) async {
     // Get current analysis results to find adjacent morphemes
     final results = provider.currentResults;
     if (results.isEmpty) return null;
-    
+
     // Find the index of the current word in results
     int currentIndex = -1;
     for (int i = 0; i < results.length; i++) {
@@ -235,20 +357,22 @@ class _TextInputScreenState extends State<TextInputScreen> {
       }
       if (currentIndex >= 0) break;
     }
-    
+
     if (currentIndex < 0 || currentIndex >= results.length - 1) return null;
-    
+
     // Try combining with next morpheme(s)
     final currentResult = results[currentIndex];
-    final currentMorphIndex = currentResult.morphemes.indexWhere((m) => m.text == word && m.tag == tag);
-    
-    if (currentMorphIndex < 0 || currentMorphIndex >= currentResult.morphemes.length - 1) return null;
-    
+    final currentMorphIndex =
+        currentResult.morphemes.indexWhere((m) => m.text == word && m.tag == tag);
+
+    if (currentMorphIndex < 0 ||
+        currentMorphIndex >= currentResult.morphemes.length - 1) return null;
+
     // Combine current + next morpheme
     final nextMorph = currentResult.morphemes[currentMorphIndex + 1];
     final combinedWord = word + nextMorph.text;
     final combinedTag = tag; // Use first morpheme's tag
-    
+
     print('=== Trying combined word search: $combinedWord ($tag) ===');
     return await provider.getDefinitionWithMultiLang(combinedWord, combinedTag);
   }
