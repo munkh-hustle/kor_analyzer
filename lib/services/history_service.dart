@@ -4,6 +4,7 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/reading_history.dart';
 import 'dart:io';
+import 'dart:math' show Random;
 
 class HistoryService {
   static final HistoryService _instance = HistoryService._internal();
@@ -157,8 +158,16 @@ class HistoryService {
   /// Check if there's any history
   Future<bool> hasHistory() async {
     final db = await database;
-    final result = await db.rawQuery('SELECT COUNT(*) as count FROM reading_history');
-    final count = Sqflite.firstIntValue(result[0]['count']) ?? 0;
+    final result = await db.rawQuery('SELECT COUNT(*) as cnt FROM reading_history');
+    final count = (result.first['cnt'] as num?)?.toInt() ?? 0;
     return count > 0;
+  }
+
+  /// Get a random history entry for practice
+  Future<ReadingHistoryEntry?> getRandomHistoryEntry() async {
+    final entries = await getHistory();
+    if (entries.isEmpty) return null;
+    final random = Random();
+    return entries[random.nextInt(entries.length)];
   }
 }

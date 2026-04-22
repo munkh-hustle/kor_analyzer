@@ -615,7 +615,6 @@ class DictionaryService {
         word TEXT NOT NULL,
         tag TEXT,
         definition TEXT,
-        examples TEXT,
         multilan_list TEXT,
         gubun TEXT,
         sup_no TEXT,
@@ -623,7 +622,8 @@ class DictionaryService {
         im_cnt TEXT,
         full_sense_info TEXT,
         synonyms TEXT,
-        antonyms TEXT
+        antonyms TEXT,
+        examples TEXT
       )
     ''');
   }
@@ -648,8 +648,7 @@ class DictionaryService {
       print('=== Normalized search word: "$searchWord" -> "$normalizedSearchWord" ===');
 
       // First, check total count in database
-      final countResult = Sqflite.firstIntValue(
-          await db.rawQuery('SELECT COUNT(*) FROM dictionary'));
+      final countResult = (await db.rawQuery('SELECT COUNT(*) as cnt FROM dictionary')).first['cnt'] as int? ?? 0;
       print('=== Total entries in database: $countResult ===');
 
       // Check if word exists at all (with detailed logging)
@@ -739,6 +738,7 @@ class DictionaryService {
             'imCnt': results.first['im_cnt'] as String?,
             'synonyms': results.first['synonyms'] as String?,
             'antonyms': results.first['antonyms'] as String?,
+            'examples': results.first['examples'] as String?,
           };
         }
         
@@ -779,6 +779,7 @@ class DictionaryService {
             'imCnt': bestGrammarMatch['im_cnt'] as String?,
             'synonyms': bestGrammarMatch['synonyms'] as String?,
             'antonyms': bestGrammarMatch['antonyms'] as String?,
+            'examples': bestGrammarMatch['examples'] as String?,
           };
         }
         
@@ -794,6 +795,7 @@ class DictionaryService {
           'imCnt': results.first['im_cnt'] as String?,
           'synonyms': results.first['synonyms'] as String?,
           'antonyms': results.first['antonyms'] as String?,
+          'examples': results.first['examples'] as String?,
         };
       }
 
@@ -817,6 +819,7 @@ class DictionaryService {
           'imCnt': fallbackResults.first['im_cnt'] as String?,
           'synonyms': fallbackResults.first['synonyms'] as String?,
           'antonyms': fallbackResults.first['antonyms'] as String?,
+          'examples': fallbackResults.first['examples'] as String?,
         };
       }
 
@@ -844,6 +847,9 @@ class DictionaryService {
           'supNo': bestMatch['sup_no'] as String?,
           'wordNo': bestMatch['word_no'] as String?,
           'imCnt': bestMatch['im_cnt'] as String?,
+          'synonyms': bestMatch['synonyms'] as String?,
+          'antonyms': bestMatch['antonyms'] as String?,
+          'examples': bestMatch['examples'] as String?,
         };
       }
 
@@ -881,6 +887,9 @@ class DictionaryService {
           'supNo': bestSuffixMatch['sup_no'] as String?,
           'wordNo': bestSuffixMatch['word_no'] as String?,
           'imCnt': bestSuffixMatch['im_cnt'] as String?,
+          'synonyms': bestSuffixMatch['synonyms'] as String?,
+          'antonyms': bestSuffixMatch['antonyms'] as String?,
+          'examples': bestSuffixMatch['examples'] as String?,
         };
       }
 
