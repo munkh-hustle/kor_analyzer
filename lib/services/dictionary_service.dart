@@ -476,6 +476,8 @@ class DictionaryService {
             String examples = '';
             String multilanListJson = '';
             String fullSenseInfoJson = '';
+            String synonymsJson = '';
+            String antonymsJson = '';
 
             if (senseInfo != null) {
               // Store full sense info as JSON for later retrieval
@@ -526,6 +528,45 @@ class DictionaryService {
                   }
                   examples = exampleTexts.join('\n');
                 }
+
+                // Extract synonyms and antonyms from relatedWordsList
+                var relatedWordsList = firstSense['relatedWordsList'];
+                if (relatedWordsList != null && relatedWordsList is List) {
+                  List<String> synonymList = [];
+                  List<String> antonymList = [];
+                  
+                  for (var related in relatedWordsList) {
+                    if (related is Map) {
+                      final relWord = related['rel_word']?.toString() ?? '';
+                      final relCodeName = related['rel_code_name']?.toString() ?? '';
+                      
+                      if (relWord.isNotEmpty) {
+                        // '유의어' = synonym, '반대말' = antonym, '참고어' = reference word
+                        if (relCodeName == '유의어') {
+                          synonymList.add(relWord);
+                        } else if (relCodeName == '반대말') {
+                          antonymList.add(relWord);
+                        }
+                      }
+                    }
+                  }
+                  
+                  if (synonymList.isNotEmpty) {
+                    try {
+                      synonymsJson = json.encode(synonymList);
+                    } catch (e) {
+                      print('Error encoding synonyms: $e');
+                    }
+                  }
+                  
+                  if (antonymList.isNotEmpty) {
+                    try {
+                      antonymsJson = json.encode(antonymList);
+                    } catch (e) {
+                      print('Error encoding antonyms: $e');
+                    }
+                  }
+                }
               }
             }
 
@@ -533,7 +574,7 @@ class DictionaryService {
             if (word.isNotEmpty) {
               if (word == '마음') {
                 final defPreview = definition.length > 50 ? definition.substring(0, 50) : definition;
-                print('=== INSERTING 마음: word="$word", tag="$tag", gubun="$gubun", def="$defPreview...", multilan=${multilanListJson.isNotEmpty ? "yes" : "no"}, sense_info=${fullSenseInfoJson.isNotEmpty ? "yes" : "no"} ===');
+                print('=== INSERTING 마음: word="$word", tag="$tag", gubun="$gubun", def="$defPreview...", multilan=${multilanListJson.isNotEmpty ? "yes" : "no"}, sense_info=${fullSenseInfoJson.isNotEmpty ? "yes" : "no"}, synonyms=${synonymsJson.isNotEmpty ? "yes" : "no"}, antonyms=${antonymsJson.isNotEmpty ? "yes" : "no"} ===');
               }
               await db.insert(
                   'dictionary',
@@ -548,6 +589,8 @@ class DictionaryService {
                     'word_no': wordNo,
                     'im_cnt': imCnt,
                     'full_sense_info': fullSenseInfoJson,
+                    'synonyms': synonymsJson,
+                    'antonyms': antonymsJson,
                   },
                   conflictAlgorithm: ConflictAlgorithm.ignore);
               inserted++;
@@ -572,13 +615,15 @@ class DictionaryService {
         word TEXT NOT NULL,
         tag TEXT,
         definition TEXT,
-        examples TEXT,
         multilan_list TEXT,
         gubun TEXT,
         sup_no TEXT,
         word_no TEXT,
         im_cnt TEXT,
-        full_sense_info TEXT
+        full_sense_info TEXT,
+        synonyms TEXT,
+        antonyms TEXT,
+        examples TEXT
       )
     ''');
   }
@@ -603,8 +648,7 @@ class DictionaryService {
       print('=== Normalized search word: "$searchWord" -> "$normalizedSearchWord" ===');
 
       // First, check total count in database
-      final countResult = Sqflite.firstIntValue(
-          await db.rawQuery('SELECT COUNT(*) FROM dictionary'));
+      final countResult = (await db.rawQuery('SELECT COUNT(*) as cnt FROM dictionary')).first['cnt'] as int? ?? 0;
       print('=== Total entries in database: $countResult ===');
 
       // Check if word exists at all (with detailed logging)
@@ -692,6 +736,9 @@ class DictionaryService {
             'supNo': results.first['sup_no'] as String?,
             'wordNo': results.first['word_no'] as String?,
             'imCnt': results.first['im_cnt'] as String?,
+            'synonyms': results.first['synonyms'] as String?,
+            'antonyms': results.first['antonyms'] as String?,
+            'examples': results.first['examples'] as String?,
           };
         }
         
@@ -730,6 +777,9 @@ class DictionaryService {
             'supNo': bestGrammarMatch['sup_no'] as String?,
             'wordNo': bestGrammarMatch['word_no'] as String?,
             'imCnt': bestGrammarMatch['im_cnt'] as String?,
+            'synonyms': bestGrammarMatch['synonyms'] as String?,
+            'antonyms': bestGrammarMatch['antonyms'] as String?,
+            'examples': bestGrammarMatch['examples'] as String?,
           };
         }
         
@@ -743,6 +793,9 @@ class DictionaryService {
           'supNo': results.first['sup_no'] as String?,
           'wordNo': results.first['word_no'] as String?,
           'imCnt': results.first['im_cnt'] as String?,
+          'synonyms': results.first['synonyms'] as String?,
+          'antonyms': results.first['antonyms'] as String?,
+          'examples': results.first['examples'] as String?,
         };
       }
 
@@ -764,6 +817,9 @@ class DictionaryService {
           'supNo': fallbackResults.first['sup_no'] as String?,
           'wordNo': fallbackResults.first['word_no'] as String?,
           'imCnt': fallbackResults.first['im_cnt'] as String?,
+          'synonyms': fallbackResults.first['synonyms'] as String?,
+          'antonyms': fallbackResults.first['antonyms'] as String?,
+          'examples': fallbackResults.first['examples'] as String?,
         };
       }
 
@@ -791,6 +847,9 @@ class DictionaryService {
           'supNo': bestMatch['sup_no'] as String?,
           'wordNo': bestMatch['word_no'] as String?,
           'imCnt': bestMatch['im_cnt'] as String?,
+          'synonyms': bestMatch['synonyms'] as String?,
+          'antonyms': bestMatch['antonyms'] as String?,
+          'examples': bestMatch['examples'] as String?,
         };
       }
 
@@ -828,6 +887,9 @@ class DictionaryService {
           'supNo': bestSuffixMatch['sup_no'] as String?,
           'wordNo': bestSuffixMatch['word_no'] as String?,
           'imCnt': bestSuffixMatch['im_cnt'] as String?,
+          'synonyms': bestSuffixMatch['synonyms'] as String?,
+          'antonyms': bestSuffixMatch['antonyms'] as String?,
+          'examples': bestSuffixMatch['examples'] as String?,
         };
       }
 
