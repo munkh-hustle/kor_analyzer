@@ -452,7 +452,14 @@ class DictionaryService {
             String word = wordInfo['org_word'] ?? '';
             String tag = wordInfo['sp_code_name'] ?? '';
 
-            // Extract wordInfo fields\n            String gubun = wordInfo['gubun'] ?? '';\n            String supNo = wordInfo['sup_no'] ?? '';\n            String wordNo = wordInfo['word_no'] ?? '';\n            String imCnt = wordInfo['im_cnt'] ?? '';\n\n            // Trim whitespace from word and tag to ensure clean data\n            word = word.trim();
+            // Extract wordInfo fields
+            String gubun = wordInfo['gubun'] ?? '';
+            String supNo = wordInfo['sup_no'] ?? '';
+            String wordNo = wordInfo['word_no'] ?? '';
+            String imCnt = wordInfo['im_cnt'] ?? '';
+
+            // Trim whitespace from word and tag to ensure clean data
+            word = word.trim();
             tag = tag.trim();
 
             // Debug: Log first few entries and specifically '마음'
