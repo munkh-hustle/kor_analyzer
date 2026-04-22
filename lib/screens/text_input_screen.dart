@@ -199,6 +199,8 @@ class _TextInputScreenState extends State<TextInputScreen> {
         tag: tag,
         definition: result?['definition'] as String?,
         multilanListJson: result?['multilanList'] as String?,
+        fullSenseInfoJson: result?['fullSenseInfo'] as String?,
+        gubun: result?['gubun'] as String?,
       ),
     );
   }
