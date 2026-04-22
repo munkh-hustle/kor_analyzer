@@ -9,10 +9,6 @@ __pycache__/
 *.so
 *.a
 *.out
-*.swp
-*.swo
-*.tmp
-*.log
 
 # Dependencies
 node_modules/
@@ -26,17 +22,18 @@ venv/
 dist/
 build/
 target/
-.coverage
-coverage/
-htmlcov/
+*.log
+*.tmp
+*.swp
 
 # Editors
 .vscode/
 .idea/
 
-# System files
-.DS_Store
-Thumbs.db
+# Coverage
+coverage/
+htmlcov/
+.coverage
 
 # Compressed files
 *.zip
@@ -62,16 +59,13 @@ Thumbs.db
 *.tar.xz
 *.tar.zst
 
-# Dart specific
-.dart_tool/
-.packages
-*.dart.js
-*.map
-
-# Flutter specific
-flutter/
-ios/Flutter/flutter_assets/
-android/.gradle/
+# Gradle
 .gradle/
+
+# Python specific
 .mypy_cache/
 .pytest_cache/
+
+# System files
+.DS_Store
+Thumbs.db
