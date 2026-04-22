@@ -39,7 +39,7 @@ class KoreanReaderApp extends StatelessWidget {
             elevation: 0,
             scrolledUnderElevation: 2,
           ),
-          cardTheme: CardTheme(
+          cardTheme: CardThemeData(
             elevation: 2,
             shadowColor: Colors.black.withOpacity(0.1),
             shape: RoundedRectangleBorder(
