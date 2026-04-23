@@ -159,17 +159,19 @@ class DictionaryPopup extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Multi-language translations
+                        // Multi-language translations (English + Mongolian only)
                         if (multilanList != null &&
                             multilanList.isNotEmpty) ...[
                           _buildSectionHeader(
-                              context, '다국어 번역', Icons.language_rounded),
+                              context, 'Translations', Icons.language_rounded),
                           const SizedBox(height: 12),
-                          ...multilanList.map((item) {
+                          ...multilanList.where((item) {
+                            final nationCodeName = item['nation_code_name'] ?? '';
+                            return nationCodeName == '영어' || nationCodeName == '몽골어';
+                          }).map((item) {
                             final translation = item['multi_translation'] ?? '';
                             final multiDef = item['multi_definition'] ?? '';
-                            final nationCodeName =
-                                item['nation_code_name'] ?? '';
+                            final nationCodeName = item['nation_code_name'] ?? '';
 
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 16),
@@ -194,7 +196,7 @@ class DictionaryPopup extends StatelessWidget {
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
-                                          nationCodeName,
+                                          nationCodeName == '영어' ? 'English' : 'Mongolian',
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.bold,
@@ -231,9 +233,9 @@ class DictionaryPopup extends StatelessWidget {
                           }).toList(),
                         ],
 
-                        // Korean Definition
+                        // Definition (English + Mongolian)
                         _buildSectionHeader(
-                            context, '뜻', Icons.menu_book_rounded),
+                            context, 'Definition', Icons.menu_book_rounded),
                         const SizedBox(height: 12),
                         Container(
                           padding: const EdgeInsets.all(16),
@@ -256,7 +258,7 @@ class DictionaryPopup extends StatelessWidget {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
-                                        '사전에 등록되지 않은 단어입니다.',
+                                        'This word is not registered in the dictionary.',
                                         style: TextStyle(
                                           fontSize: 15,
                                           color: colorScheme.outline,
@@ -278,7 +280,7 @@ class DictionaryPopup extends StatelessWidget {
 
                         // Synonyms
                         if (synonymsJson != null && synonymsJson!.isNotEmpty) ...[
-                          _buildSectionHeader(context, '유의어', Icons.auto_awesome_rounded),
+                          _buildSectionHeader(context, 'Synonyms', Icons.auto_awesome_rounded),
                           const SizedBox(height: 12),
                           Container(
                             padding: const EdgeInsets.all(16),
@@ -296,7 +298,7 @@ class DictionaryPopup extends StatelessWidget {
 
                         // Antonyms
                         if (antonymsJson != null && antonymsJson!.isNotEmpty) ...[
-                          _buildSectionHeader(context, '반의어', Icons.swap_horiz_rounded),
+                          _buildSectionHeader(context, 'Antonyms', Icons.swap_horiz_rounded),
                           const SizedBox(height: 12),
                           Container(
                             padding: const EdgeInsets.all(16),
@@ -314,7 +316,7 @@ class DictionaryPopup extends StatelessWidget {
 
                         // Usage examples from database
                         if (examplesJson != null && examplesJson!.isNotEmpty) ...[
-                          _buildSectionHeader(context, '사용 예', Icons.format_quote_rounded),
+                          _buildSectionHeader(context, 'Examples', Icons.format_quote_rounded),
                           const SizedBox(height: 12),
                           Container(
                             padding: const EdgeInsets.all(16),
@@ -334,7 +336,7 @@ class DictionaryPopup extends StatelessWidget {
                         if ((examList2 != null && examList2.isNotEmpty) ||
                             (examList3 != null && examList3.isNotEmpty)) ...[
                           if (examplesJson == null || examplesJson!.isEmpty)
-                            _buildSectionHeader(context, '사용 예', Icons.format_quote_rounded),
+                            _buildSectionHeader(context, 'Examples', Icons.format_quote_rounded),
                           const SizedBox(height: 12),
                           Container(
                             padding: const EdgeInsets.all(16),
@@ -381,7 +383,7 @@ class DictionaryPopup extends StatelessWidget {
                         ] else if (examplesJson == null || examplesJson!.isEmpty) ...[
                           // Fallback placeholder if no examples
                           _buildSectionHeader(
-                              context, '사용 예', Icons.format_quote_rounded),
+                              context, 'Examples', Icons.format_quote_rounded),
                           const SizedBox(height: 12),
                           Container(
                             padding: const EdgeInsets.all(16),

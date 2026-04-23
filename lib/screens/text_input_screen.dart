@@ -5,7 +5,9 @@ import '../providers/korean_reader_provider.dart';
 import '../widgets/analysis_result_widget.dart';
 import '../widgets/dictionary_popup.dart';
 import '../services/history_service.dart';
+import '../services/search_history_service.dart';
 import 'history_screen.dart';
+import 'search_history_screen.dart';
 
 class TextInputScreen extends StatefulWidget {
   const TextInputScreen({super.key});
@@ -101,6 +103,16 @@ class _TextInputScreenState extends State<TextInputScreen>
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search_rounded),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SearchHistoryScreen()),
+              );
+            },
+            tooltip: '검색 기록',
+          ),
           IconButton(
             icon: const Icon(Icons.history_rounded),
             onPressed: () {
@@ -426,6 +438,19 @@ class _TextInputScreenState extends State<TextInputScreen>
 
     // If a matchedWord is returned (prefix match), show that in the popup
     final displayWord = result?['matchedWord'] as String? ?? word;
+
+    // Save to search history
+    SearchHistoryService().saveSearch(
+      displayWord,
+      tag,
+      definition: result?['definition'] as String?,
+      multilanListJson: result?['multilanList'] as String?,
+      fullSenseInfoJson: result?['fullSenseInfo'] as String?,
+      gubun: result?['gubun'] as String?,
+      synonymsJson: result?['synonyms'] as String?,
+      antonymsJson: result?['antonyms'] as String?,
+      examplesJson: result?['examples'] as String?,
+    );
 
     // Unfocus any current focus to prevent keyboard from showing
     FocusScope.of(context).unfocus();
