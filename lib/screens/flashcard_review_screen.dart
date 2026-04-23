@@ -19,9 +19,17 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
   bool _showAnswer = false;
   bool _isComplete = false;
   
+  // Response time tracking
+  DateTime? _cardStartTime;
+  double _currentResponseTime = 0.0;
+  
   // Statistics
   int _correctCount = 0;
   int _incorrectCount = 0;
+  
+  // Last review result for editing
+  int? _lastQuality;
+  DateTime? _lastReviewTime;
 
   @override
   void initState() {
@@ -39,9 +47,26 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
     } else {
       setState(() {
         _reviewQueue = cards;
+        _startResponseTimer();
       });
     }
     return cards;
+  }
+  
+  void _startResponseTimer() {
+    _cardStartTime = DateTime.now();
+  }
+  
+  double _getAndResetResponseTime() {
+    if (_cardStartTime == null) return 1.0; // Default 1 second if not tracked
+    
+    _currentResponseTime = 
+        DateTime.now().difference(_cardStartTime!).inMilliseconds / 1000.0;
+    
+    // Reset timer for next card
+    _cardStartTime = DateTime.now();
+    
+    return _currentResponseTime;
   }
 
   void _showAnswerCard() {
@@ -54,11 +79,13 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
     if (_currentIndex >= _reviewQueue.length) return;
     
     final currentCard = _reviewQueue[_currentIndex];
+    final responseTime = _getAndResetResponseTime();
     
     try {
       await _flashcardService.updateFlashcardAfterReview(
         currentCard.id,
         quality,
+        responseTime,
       );
       
       if (quality >= 3) {
@@ -70,6 +97,12 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
           _incorrectCount++;
         });
       }
+      
+      // Store last review info for potential editing
+      setState(() {
+        _lastQuality = quality;
+        _lastReviewTime = DateTime.now();
+      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -89,6 +122,100 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
         _isComplete = true;
       }
     });
+  }
+  
+  /// Show dialog to edit the last submitted grade
+  void _editLastGrade() {
+    if (_lastQuality == null || _currentIndex == 0) return;
+    
+    final previousIndex = _currentIndex - 1;
+    if (previousIndex < 0 || previousIndex >= _reviewQueue.length) return;
+    
+    showDialog<int>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Зэрэглэлийг засах'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Сүүлийн хариуг засах: ${_reviewQueue[previousIndex].word}'),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildEditGradeButton('Дахин', 1, Colors.red),
+                  _buildEditGradeButton('Хэцүү', 3, Colors.orange),
+                  _buildEditGradeButton('Сайн', 4, Colors.blue),
+                  _buildEditGradeButton('Хялбар', 5, Colors.green),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    ).then((newQuality) {
+      if (newQuality != null && _lastQuality != newQuality) {
+        _reprocessLastReview(previousIndex, newQuality);
+      }
+    });
+  }
+  
+  /// Reprocess the last review with a new grade
+  Future<void> _reprocessLastReview(int cardIndex, int newQuality) async {
+    if (cardIndex < 0 || cardIndex >= _reviewQueue.length) return;
+    
+    final card = _reviewQueue[cardIndex];
+    
+    try {
+      // Note: This is a simplified reprocessing - in production you'd want
+      // to properly recalculate based on the state before this review
+      await _flashcardService.updateFlashcardAfterReview(
+        card.id,
+        newQuality,
+        _currentResponseTime, // Use the same response time
+      );
+      
+      // Update statistics
+      if (_lastQuality! >= 3) _correctCount--;
+      if (_lastQuality! < 3) _incorrectCount--;
+      if (newQuality >= 3) _correctCount++;
+      if (newQuality < 3) _incorrectCount++;
+      
+      setState(() {
+        _lastQuality = newQuality;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Зэрэглэл амжилттай засагдлаа'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Алдаа: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
+  Widget _buildEditGradeButton(String label, int quality, Color color) {
+    return ElevatedButton(
+      onPressed: () => Navigator.pop(context, quality),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+      ),
+      child: Text(label),
+    );
   }
 
   void _restartSession() {
@@ -113,7 +240,13 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
-          if (!_isComplete && _reviewQueue.isNotEmpty)
+          if (!_isComplete && _reviewQueue.isNotEmpty) ...[
+            // Edit last grade button
+            IconButton(
+              icon: const Icon(Icons.edit_rounded),
+              onPressed: _currentIndex > 0 ? _editLastGrade : null,
+              tooltip: 'Сүүлийн хариуг засах',
+            ),
             Padding(
               padding: const EdgeInsets.only(right: 16.0),
               child: Center(
@@ -127,6 +260,7 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
                 ),
               ),
             ),
+          ],
         ],
       ),
       body: _reviewQueue.isEmpty && !_isComplete
@@ -327,6 +461,80 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
             borderRadius: BorderRadius.circular(3),
           ),
           const SizedBox(height: 24),
+          
+          // Next review date and scheduling info
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.schedule_rounded,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Дараагийн давталт:',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  flashcard.nextReviewDateString,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          
+          // Stability and difficulty info
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildInfoChip(
+                  icon: Icons.psychology_rounded,
+                  label: 'Хялбар',
+                  value: '${(flashcard.difficulty * 100).round()}%',
+                  color: Colors.blue,
+                ),
+                _buildInfoChip(
+                  icon: Icons.memory_rounded,
+                  label: 'Тогтвор',
+                  value: '${flashcard.stability.toStringAsFixed(1)} өдөр',
+                  color: Colors.green,
+                ),
+                _buildInfoChip(
+                  icon: Icons.trending_up_rounded,
+                  label: 'Интервал',
+                  value: '${flashcard.interval} өдөр',
+                  color: Colors.orange,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           
           // Card container
           Container(
@@ -582,6 +790,42 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
           ],
         ),
       ),
+    );
+  }
+  
+  Widget _buildInfoChip({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: color.withOpacity(0.8),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }

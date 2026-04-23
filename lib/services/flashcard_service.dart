@@ -176,6 +176,7 @@ class FlashcardService {
   Future<Flashcard> updateFlashcardAfterReview(
     String id,
     int quality, // 0-3 scale (FSRS style: 0=Again, 1=Hard, 2=Good, 3=Easy)
+    double responseTimeSeconds, // Time taken to respond in seconds
   ) async {
     final db = await database;
     
@@ -210,6 +211,7 @@ class FlashcardService {
     // Calculate elapsed days since last review
     final now = DateTime.now();
     final elapsedDays = now.difference(flashcard.lastReviewedAt).inDays.toDouble();
+    final hourOfDay = now.hour;
     
     // Use FSRS to calculate new interval and state
     Map<String, double> result;
@@ -223,6 +225,7 @@ class FlashcardService {
         grade: fsrsGrade,
         currentInterval: 0,
         elapsedDays: 0,
+        responseTimeSeconds: responseTimeSeconds,
       );
     } else {
       // Existing card - use current FSRS state
@@ -232,6 +235,7 @@ class FlashcardService {
         grade: fsrsGrade,
         currentInterval: flashcard.interval,
         elapsedDays: elapsedDays,
+        responseTimeSeconds: responseTimeSeconds,
       );
     }
     
@@ -257,7 +261,18 @@ class FlashcardService {
       grade: fsrsGrade,
       interval: flashcard.interval,
       recalled: fsrsGrade >= 2,
+      responseTimeSeconds: responseTimeSeconds,
+      hourOfDay: hourOfDay,
     );
+    
+    // Update time-of-day performance tracking
+    Map<String, dynamic>? updatedTimeOfDayPerformance = 
+        _updateTimeOfDayPerformance(
+          flashcard.timeOfDayPerformance,
+          hourOfDay,
+          fsrsGrade >= 2,
+          responseTimeSeconds,
+        );
     
     // Update the flashcard
     final updatedFlashcard = Flashcard(
@@ -275,6 +290,9 @@ class FlashcardService {
       lastReviewedAt: now,
       nextReviewAt: nextReviewAt,
       retrievability: newRetrievability,
+      lastResponseTime: responseTimeSeconds,
+      easeFactor: flashcard.easeFactor,
+      timeOfDayPerformance: updatedTimeOfDayPerformance,
     );
     
     await db.update(
@@ -285,6 +303,40 @@ class FlashcardService {
     );
     
     return updatedFlashcard;
+  }
+  
+  /// Update time-of-day performance tracking for a flashcard
+  Map<String, dynamic> _updateTimeOfDayPerformance(
+    Map<String, dynamic>? current,
+    int hourOfDay,
+    bool correct,
+    double responseTime,
+  ) {
+    Map<String, dynamic> performance = current ?? {};
+    
+    String hourKey = hourOfDay.toString();
+    
+    if (!performance.containsKey(hourKey)) {
+      performance[hourKey] = {
+        'totalReviews': 0,
+        'correctReviews': 0,
+        'totalResponseTime': 0.0,
+      };
+    }
+    
+    Map<String, dynamic> hourData = 
+        Map<String, dynamic>.from(performance[hourKey]);
+    
+    hourData['totalReviews'] = (hourData['totalReviews'] as int) + 1;
+    if (correct) {
+      hourData['correctReviews'] = (hourData['correctReviews'] as int) + 1;
+    }
+    hourData['totalResponseTime'] = 
+        (hourData['totalResponseTime'] as double) + responseTime;
+    
+    performance[hourKey] = hourData;
+    
+    return performance;
   }
 
   /// Delete a flashcard

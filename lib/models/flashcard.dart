@@ -19,6 +19,11 @@ class Flashcard {
   final DateTime nextReviewAt;
   final double retrievability; // Current probability of recall
   
+  // New fields for enhanced scheduling
+  final double? lastResponseTime; // Response time in seconds for last review
+  final double? easeFactor; // Legacy ease factor for compatibility
+  final Map<String, dynamic>? timeOfDayPerformance; // Performance by time of day
+  
   Flashcard({
     required this.id,
     required this.paragraphId,
@@ -34,6 +39,9 @@ class Flashcard {
     required this.lastReviewedAt,
     required this.nextReviewAt,
     this.retrievability = 1.0,
+    this.lastResponseTime,
+    this.easeFactor,
+    this.timeOfDayPerformance,
   });
   
   Map<String, dynamic> toJson() => {
@@ -51,6 +59,9 @@ class Flashcard {
         'lastReviewedAt': lastReviewedAt.millisecondsSinceEpoch,
         'nextReviewAt': nextReviewAt.millisecondsSinceEpoch,
         'retrievability': retrievability,
+        'lastResponseTime': lastResponseTime,
+        'easeFactor': easeFactor,
+        'timeOfDayPerformance': timeOfDayPerformance,
       };
   
   factory Flashcard.fromJson(Map<String, dynamic> json) => Flashcard(
@@ -68,6 +79,11 @@ class Flashcard {
         lastReviewedAt: DateTime.fromMillisecondsSinceEpoch(json['lastReviewedAt']),
         nextReviewAt: DateTime.fromMillisecondsSinceEpoch(json['nextReviewAt']),
         retrievability: (json['retrievability'] as num?)?.toDouble() ?? 1.0,
+        lastResponseTime: (json['lastResponseTime'] as num?)?.toDouble(),
+        easeFactor: (json['easeFactor'] as num?)?.toDouble(),
+        timeOfDayPerformance: json['timeOfDayPerformance'] != null 
+            ? Map<String, dynamic>.from(json['timeOfDayPerformance']) 
+            : null,
       );
   
   /// Check if the card is due for review
@@ -85,6 +101,22 @@ class Flashcard {
     if (!isDue) return 0;
     return nextReviewAt.difference(DateTime.now()).inDays.abs();
   }
+  
+  /// Get formatted next review date string
+  String get nextReviewDateString {
+    final now = DateTime.now();
+    final diff = nextReviewAt.difference(now);
+    
+    if (diff.inSeconds < 0) return 'Due now';
+    if (diff.inMinutes < 1) return 'In ${diff.inSeconds}s';
+    if (diff.inHours < 1) return 'In ${diff.inMinutes}m';
+    if (diff.inDays < 1) return 'In ${diff.inHours}h';
+    if (diff.inDays == 1) return 'Tomorrow';
+    if (diff.inDays < 7) return 'In ${diff.inDays} days';
+    
+    // Format as date
+    return '${nextReviewAt.month}/${nextReviewAt.day}/${nextReviewAt.year}';
+  }
 }
 
 /// Result of a review session
@@ -92,10 +124,47 @@ class ReviewResult {
   final Flashcard flashcard;
   final int quality; // 0-5 scale (Anki style)
   final DateTime reviewedAt;
+  final double responseTime; // Time taken to answer in seconds
+  final int hourOfDay; // Hour when review was completed (0-23)
   
   ReviewResult({
     required this.flashcard,
     required this.quality,
     required this.reviewedAt,
+    required this.responseTime,
+    required this.hourOfDay,
   });
+}
+
+/// Time-of-day performance statistics
+class TimeOfDayStats {
+  final int hour; // 0-23
+  final int totalReviews;
+  final int correctReviews;
+  final double averageResponseTime; // in seconds
+  final double accuracy; // 0-1
+  
+  TimeOfDayStats({
+    required this.hour,
+    required this.totalReviews,
+    required this.correctReviews,
+    required this.averageResponseTime,
+    required this.accuracy,
+  });
+  
+  Map<String, dynamic> toJson() => {
+        'hour': hour,
+        'totalReviews': totalReviews,
+        'correctReviews': correctReviews,
+        'averageResponseTime': averageResponseTime,
+        'accuracy': accuracy,
+      };
+  
+  factory TimeOfDayStats.fromJson(Map<String, dynamic> json) => TimeOfDayStats(
+        hour: json['hour'],
+        totalReviews: json['totalReviews'],
+        correctReviews: json['correctReviews'],
+        averageResponseTime: (json['averageResponseTime'] as num).toDouble(),
+        accuracy: (json['accuracy'] as num).toDouble(),
+      );
 }

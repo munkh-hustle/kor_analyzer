@@ -162,6 +162,7 @@ class FSRSScheduler {
   /// - grade: Review quality (0=Again, 1=Hard, 2=Good, 3=Easy)
   /// - currentInterval: Current interval in days
   /// - elapsedDays: Days since last review
+  /// - responseTimeSeconds: Time taken to respond in seconds (optional, for adaptive difficulty)
   ///
   /// Returns: {interval, newStability, newDifficulty}
   Map<String, double> calculateNextInterval({
@@ -170,9 +171,16 @@ class FSRSScheduler {
     required int grade,
     required int currentInterval,
     required double elapsedDays,
+    double? responseTimeSeconds,
   }) {
     // Convert grade to FSRS scale (0-3)
     int fsrsGrade = grade.clamp(0, 3);
+
+    // Apply adaptive difficulty based on response time
+    // Faster responses indicate easier recall, adjust grade accordingly
+    if (responseTimeSeconds != null) {
+      fsrsGrade = _applyAdaptiveDifficulty(fsrsGrade, responseTimeSeconds);
+    }
 
     // Calculate retrievability (probability of recall)
     double retrievability =
@@ -199,6 +207,36 @@ class FSRSScheduler {
       'newDifficulty': newDifficulty,
       'retrievability': retrievability,
     };
+  }
+
+  /// Apply adaptive difficulty based on response time
+  /// Faster responses suggest the card is easier than current difficulty indicates
+  /// 
+  /// Parameters:
+  /// - baseGrade: The original grade given by user (0-3)
+  /// - responseTimeSeconds: Time taken to respond
+  /// 
+  /// Returns: Adjusted grade (0-3)
+  int _applyAdaptiveDifficulty(int baseGrade, double responseTimeSeconds) {
+    // Response time thresholds (in seconds)
+    const veryFastThreshold = 3.0;   // Very fast - likely too easy
+    const fastThreshold = 8.0;       // Fast - good recall
+    const slowThreshold = 20.0;      // Slow - struggling
+    
+    if (baseGrade >= 2) { // Only adjust for successful recalls
+      if (responseTimeSeconds < veryFastThreshold) {
+        // Very fast response - treat as "Easy" even if marked "Good"
+        return 3;
+      } else if (responseTimeSeconds < fastThreshold) {
+        // Fast response - maintain or slightly boost
+        return baseGrade == 2 ? 3 : baseGrade;
+      } else if (responseTimeSeconds > slowThreshold) {
+        // Slow response despite correct answer - downgrade slightly
+        return baseGrade == 3 ? 2 : baseGrade;
+      }
+    }
+    
+    return baseGrade;
   }
 
   /// Calculate retrievability (probability of successful recall)
@@ -287,6 +325,8 @@ class FSRSScheduler {
     required int grade,
     required int interval,
     required bool recalled,
+    double? responseTimeSeconds,
+    int? hourOfDay,
   }) {
     _performanceHistory.add({
       'stability': previousStability,
@@ -294,6 +334,8 @@ class FSRSScheduler {
       'grade': grade,
       'interval': interval,
       'recalled': recalled,
+      'responseTime': responseTimeSeconds,
+      'hourOfDay': hourOfDay,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
 
@@ -303,6 +345,67 @@ class FSRSScheduler {
     if (reviewCount % 100 == 0 && reviewCount >= 100) {
       _optimizeParameters();
     }
+  }
+  
+  /// Get optimal study times based on historical performance
+  /// Returns a list of hours (0-23) sorted by performance (best first)
+  List<int> getOptimalStudyTimes() {
+    if (_performanceHistory.isEmpty) return [];
+    
+    // Group reviews by hour of day
+    Map<int, List<Map<String, dynamic>>> reviewsByHour = {};
+    
+    for (var review in _performanceHistory) {
+      if (review['hourOfDay'] == null) continue;
+      
+      int hour = review['hourOfDay'];
+      if (!reviewsByHour.containsKey(hour)) {
+        reviewsByHour[hour] = [];
+      }
+      reviewsByHour[hour]!.add(review);
+    }
+    
+    // Calculate accuracy for each hour
+    Map<int, double> accuracyByHour = {};
+    for (var entry in reviewsByHour.entries) {
+      int hour = entry.key;
+      var reviews = entry.value;
+      
+      int correct = reviews.where((r) => r['recalled'] == true).length;
+      double accuracy = correct / reviews.length;
+      accuracyByHour[hour] = accuracy;
+    }
+    
+    // Sort hours by accuracy (descending)
+    var sortedHours = accuracyByHour.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    
+    return sortedHours.map((e) => e.key).toList();
+  }
+  
+  /// Get performance statistics for a specific hour
+  Map<String, dynamic>? getPerformanceByHour(int hour) {
+    var reviews = _performanceHistory
+        .where((r) => r['hourOfDay'] == hour)
+        .toList();
+    
+    if (reviews.isEmpty) return null;
+    
+    int total = reviews.length;
+    int correct = reviews.where((r) => r['recalled'] == true).length;
+    double avgResponseTime = reviews
+        .where((r) => r['responseTime'] != null)
+        .map((r) => r['responseTime'] as double)
+        .fold(0.0, (sum, val) => sum + val) / 
+        reviews.where((r) => r['responseTime'] != null).length;
+    
+    return {
+      'hour': hour,
+      'totalReviews': total,
+      'correctReviews': correct,
+      'accuracy': correct / total,
+      'averageResponseTime': avgResponseTime,
+    };
   }
 
   /// Optimize parameters using gradient descent on historical data
