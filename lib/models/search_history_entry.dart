@@ -7,6 +7,12 @@ class SearchHistoryEntry {
   final String tag;
   final DateTime timestamp;
   final String? definition;
+  final String? multilanListJson;
+  final String? fullSenseInfoJson;
+  final String? gubun;
+  final String? synonymsJson;
+  final String? antonymsJson;
+  final String? examplesJson;
 
   SearchHistoryEntry({
     required this.id,
@@ -14,6 +20,12 @@ class SearchHistoryEntry {
     required this.tag,
     required this.timestamp,
     this.definition,
+    this.multilanListJson,
+    this.fullSenseInfoJson,
+    this.gubun,
+    this.synonymsJson,
+    this.antonymsJson,
+    this.examplesJson,
   });
 
   Map<String, dynamic> toJson() => {
@@ -22,6 +34,12 @@ class SearchHistoryEntry {
         'tag': tag,
         'timestamp': timestamp.millisecondsSinceEpoch,
         'definition': definition,
+        'multilanListJson': multilanListJson,
+        'fullSenseInfoJson': fullSenseInfoJson,
+        'gubun': gubun,
+        'synonymsJson': synonymsJson,
+        'antonymsJson': antonymsJson,
+        'examplesJson': examplesJson,
       };
 
   factory SearchHistoryEntry.fromJson(Map<String, dynamic> json) =>
@@ -31,6 +49,12 @@ class SearchHistoryEntry {
         tag: json['tag'],
         timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp']),
         definition: json['definition'],
+        multilanListJson: json['multilanListJson'],
+        fullSenseInfoJson: json['fullSenseInfoJson'],
+        gubun: json['gubun'],
+        synonymsJson: json['synonymsJson'],
+        antonymsJson: json['antonymsJson'],
+        examplesJson: json['examplesJson'],
       );
 
   String get formattedDate {
