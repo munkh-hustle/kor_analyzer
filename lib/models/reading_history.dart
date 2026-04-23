@@ -15,18 +15,19 @@ class ReadingHistoryEntry {
   });
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'text': text,
-    'timestamp': timestamp.toIso8601String(),
-    'wordCount': wordCount,
-  };
+        'id': id,
+        'text': text,
+        'timestamp': timestamp.millisecondsSinceEpoch,
+        'wordCount': wordCount,
+      };
 
-  factory ReadingHistoryEntry.fromJson(Map<String, dynamic> json) => ReadingHistoryEntry(
-    id: json['id'],
-    text: json['text'],
-    timestamp: DateTime.parse(json['timestamp']),
-    wordCount: json['wordCount'],
-  );
+  factory ReadingHistoryEntry.fromJson(Map<String, dynamic> json) =>
+      ReadingHistoryEntry(
+        id: json['id'],
+        text: json['text'],
+        timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp']),
+        wordCount: json['wordCount'],
+      );
 
   String get formattedDate {
     final now = DateTime.now();

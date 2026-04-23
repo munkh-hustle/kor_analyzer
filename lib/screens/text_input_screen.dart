@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../providers/korean_reader_provider.dart';
 import '../widgets/analysis_result_widget.dart';
 import '../widgets/dictionary_popup.dart';
+import '../services/history_service.dart';
+import 'history_screen.dart';
 
 class TextInputScreen extends StatefulWidget {
   const TextInputScreen({super.key});
@@ -67,6 +69,9 @@ class _TextInputScreenState extends State<TextInputScreen>
     final provider = Provider.of<KoreanReaderProvider>(context, listen: false);
     provider.analyzeText(_textController.text);
     _animationController.forward(from: 0);
+    
+    // Save to reading history
+    HistoryService().saveHistory(_textController.text);
   }
 
   void _clearText() {
@@ -88,6 +93,16 @@ class _TextInputScreenState extends State<TextInputScreen>
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history_rounded),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HistoryScreen()),
+              );
+            },
+            tooltip: 'Түүх',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _clearText,
