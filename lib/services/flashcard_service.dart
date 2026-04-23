@@ -128,17 +128,24 @@ class FlashcardService {
   }
 
   /// Get all flashcards due for review (Anki-style queue)
+  /// Deduplicates by word to avoid showing the same word multiple times
   Future<List<Flashcard>> getDueFlashcards({int limit = 20}) async {
     final db = await database;
     final now = DateTime.now().millisecondsSinceEpoch;
     
-    final List<Map<String, dynamic>> maps = await db.query(
-      'flashcards',
-      where: 'nextReviewAt <= ?',
-      whereArgs: [now],
-      orderBy: 'nextReviewAt ASC',
-      limit: limit,
-    );
+    // Use raw SQL query with GROUP BY to deduplicate by word
+    // Selects the flashcard with the earliest nextReviewAt for each unique word
+    final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT f1.* FROM flashcards f1
+      INNER JOIN (
+        SELECT word, MIN(nextReviewAt) as min_next_review
+        FROM flashcards
+        WHERE nextReviewAt <= ?
+        GROUP BY word
+      ) f2 ON f1.word = f2.word AND f1.nextReviewAt = f2.min_next_review
+      ORDER BY f1.nextReviewAt ASC
+      LIMIT ?
+    ''', [now, limit]);
 
     return List.generate(maps.length, (i) {
       return Flashcard.fromJson(maps[i]);
