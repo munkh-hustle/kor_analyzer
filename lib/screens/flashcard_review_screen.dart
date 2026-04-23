@@ -356,7 +356,7 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
                       Row(
                         children: [
                           Icon(
-                            Icons.contextual_token_rounded,
+                            Icons.format_quote_rounded,
                             size: 18,
                             color: Theme.of(context).colorScheme.primary,
                           ),
@@ -487,7 +487,7 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
           const SizedBox(height: 24),
           
           // Action buttons
-          if (!_showAnswer) {
+          if (!_showAnswer)
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -499,8 +499,8 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
                   textStyle: const TextStyle(fontSize: 16),
                 ),
               ),
-            );
-          } else {
+            )
+          else
             Column(
               children: [
                 const Text(
@@ -541,8 +541,7 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
                   ],
                 ),
               ],
-            );
-          },
+            ),
         ],
       ),
     );
