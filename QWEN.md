@@ -53,7 +53,51 @@ This document contains suggested features, improvements, and enhancements for th
   - Track progress and statistics
   - Custom quiz creation from history/favorites
 
-#### 2.2 Vocabulary Lists by Level
+#### 2.2 Enhanced Spaced Repetition System (SRS)
+- **Description**: Advanced spaced repetition algorithm implementation for optimal long-term retention
+- **Benefits**:
+  - Scientifically-proven method for memory consolidation
+  - Personalized review schedules based on performance
+  - Efficient study time utilization
+- **Implementation Details**:
+  - **Algorithm Migration to FSRS (Free Spaced Repetition Scheduler)**:
+    - Replace basic SM-2 with FSRS for 10-20% better retention rates
+    - Implement configurable desired retention rate (default 90%)
+    - Use machine learning to optimize intervals based on user performance
+  - **Multi-Stage Learning Pipeline**:
+    - **Learning Mode**: New cards go through short intervals (1min, 5min, 30min) before graduating
+    - **Graduating**: Cards move to 1 day, then 3 days, then progressive intervals
+    - **Relearning Mode**: Failed mature cards enter relearning (10min, 1 day) before returning to normal schedule
+    - **Review Mode**: Standard spaced repetition for established cards
+  - **Customizable Review Sessions**:
+    - Set daily limits for new cards (e.g., 20 new cards/day)
+    - Set maximum review cards per session
+    - Option to extend session when reviews exceed limit
+    - "Snooze" feature to postpone specific cards
+  - **Multiple Study Modes**:
+    - **Standard Review**: All due cards in scheduled order
+    - **Learning Focus**: Prioritize cards in learning phase
+    - **Weak Cards Filter**: Show cards with low retention scores
+    - **Cram Mode**: Disable spacing for exam preparation
+    - **Random Shuffle**: Randomize card order for variety
+  - **Enhanced Card Display During Reviews**:
+    - Show next review date prominently
+    - Display ease factor and interval information
+    - Add audio pronunciation button (TTS integration)
+    - Support images/mnemonics on flashcards
+    - Example sentences with word highlighted
+  - **Intelligent Scheduling Features**:
+    - **Adaptive Difficulty**: Adjust intervals based on response time (faster = easier)
+    - **Time-of-Day Optimization**: Track performance by time of day, suggest optimal study times
+    - **Paragraph-Level SRS**: Track comprehension for longer texts, not just individual words
+    - **Bury Related Cards**: Avoid showing multiple forms of same word in one session
+  - **Review Quality Grading**:
+    - 4-button system: Again (fail), Hard, Good, Easy
+    - Alternative 3-button for simplicity: Wrong, Hesitant, Correct
+    - Record response time for each review
+    - Allow editing grade immediately after submission
+
+#### 2.3 Vocabulary Lists by Level
 - **Description**: Organize words by proficiency level (TOPIK-style)
 - **Benefits**:
   - Structured learning path
@@ -180,7 +224,30 @@ This document contains suggested features, improvements, and enhancements for th
   - Progress charts and graphs
   - Weakness identification (words often forgotten)
 
-#### 6.2 Personalized Recommendations
+#### 6.2 SRS Performance Analytics
+- **Description**: Comprehensive spaced repetition system metrics and insights
+- **Features**:
+  - **Retention Rate Dashboard**: Show actual retention vs target (e.g., 90%)
+  - **Review Load Forecasting**: Predict upcoming review counts for next 7-30 days
+  - **Card Maturity Distribution**: Visualize cards in Learning/Young/Mature states
+  - **Ease Factor Analysis**: Identify cards with unusually high/low ease factors
+  - **Time-to-Response Metrics**: Track average response time trends
+  - **Forgotten Cards Report**: List cards failed multiple times with suggestions
+  - **Study Session Heatmap**: Show most productive study times/days
+  - **Interval Histogram**: Display distribution of card intervals
+  - **Learning Efficiency Score**: Combine retention, time invested, and progress
+
+#### 6.3 Review History Logging
+- **Description**: Comprehensive tracking of every review session
+- **Implementation Details**:
+  - Log each review with: card ID, timestamp, grade given, response time, interval before/after
+  - Store ease factor changes over time
+  - Track learning stage transitions (learning → graduating → mature)
+  - Enable review history browsing by date range
+  - Export review logs for analysis (CSV/JSON)
+  - Calculate statistics: total reviews, accuracy rate, streaks
+
+#### 6.4 Personalized Recommendations
 - **Description**: AI-powered word suggestions based on learning patterns
 - **Benefits**:
   - Optimized learning path
@@ -238,6 +305,11 @@ This document contains suggested features, improvements, and enhancements for th
 6. **Implement pull-to-refresh** in history/favorites screens
 7. **Add word of the day** notification
 8. **Create quick action widgets** for home screen
+9. **Add "Snooze" button** to postpone individual reviews by 10min/1hr/1day
+10. **Display next review date** prominently on card detail screen
+11. **Implement daily goal setting** for new cards and reviews
+12. **Add streak counter** showing consecutive days of SRS reviews
+13. **Show due count badge** on study tab with color coding (green/yellow/red)
 
 ## 💡 Innovation Ideas
 
@@ -249,6 +321,19 @@ This document contains suggested features, improvements, and enhancements for th
 6. **Collaborative Dictionary**: User-contributed example sentences
 7. **AI Chatbot**: Practice conversations with AI using learned vocabulary
 8. **Podcast Integration**: Learn from Korean audio content with synchronized transcripts
+9. **SRS Gamification**: 
+   - Achievement badges for review milestones (100/1000/10000 reviews)
+   - Level progression based on cards mastered
+   - Leaderboards for weekly study activity (opt-in)
+   - Power-up streaks: bonus XP for 7/30/100 day consistency
+10. **Smart Notifications**: 
+    - Optimal time reminders based on user's historical performance
+    - "You have 15 cards due" when opening app
+    - Streak protection alerts before midnight
+11. **Import/Export Functionality**: 
+    - Anki-compatible deck import (.apkg files)
+    - Export personal SRS data for backup
+    - Cloud sync across devices
 
 ## 📝 Implementation Priority Matrix
 
@@ -260,10 +345,14 @@ This document contains suggested features, improvements, and enhancements for th
 | Quiz Mode | Medium | High | ⭐⭐⭐ |
 | Clipboard Detection | Low | Medium | ⭐⭐ |
 | TTS Integration | Medium | High | ⭐⭐ |
+| Enhanced SRS (FSRS) | High | High | ⭐⭐⭐ |
+| SRS Analytics Dashboard | Medium | High | ⭐⭐⭐ |
+| Review History Logging | Low | High | ⭐⭐⭐ |
+| Daily Goal Setting | Low | Medium | ⭐⭐ |
 | OCR Camera | High | High | ⭐ |
 | Social Features | High | Medium | ⭐ |
-| Analytics Dashboard | Medium | Low | ⭐ |
 | Web Extension | High | Medium | ⭐ |
+| Import/Export (Anki) | Medium | Medium | ⭐⭐ |
 
 ## 🎓 Educational Research Backed Features
 
@@ -276,10 +365,13 @@ Based on second language acquisition research:
 5. **Incremental Learning**: Level-based progression
 6. **Immediate Feedback**: Instant correction in quiz mode
 7. **Personalization**: Adapt to individual learning pace
+8. **Desirable Difficulty**: Optimal challenge level for memory formation (FSRS adjustable retention)
+9. **Metacognition**: SRS analytics help learners understand their own learning patterns
+10. **Interleaved Practice**: Multiple study modes prevent overfitting to single context
 
 ---
 
 **Note**: This is a living document. Features should be prioritized based on user feedback, usage analytics, and resource availability. Regular review and updates recommended quarterly.
 
 **Last Updated**: April 2025  
-**Version**: 1.0
+**Version**: 1.1 - Enhanced with comprehensive Spaced Repetition System improvements
