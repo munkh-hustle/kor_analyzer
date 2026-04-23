@@ -32,14 +32,14 @@ class FlashcardService {
 
     return await openDatabase(
       path,
-      version: 2, // Incremented for FSRS migration
+      version: 3, // Incremented for enhanced scheduling columns
       onCreate: _createDatabase,
       onUpgrade: _upgradeDatabase,
     );
   }
 
   Future<void> _createDatabase(Database db, int version) async {
-    // Create flashcards table with FSRS fields
+    // Create flashcards table with FSRS fields and enhanced scheduling columns
     await db.execute('''
       CREATE TABLE flashcards (
         id TEXT PRIMARY KEY,
@@ -55,7 +55,10 @@ class FlashcardService {
         repetitions INTEGER NOT NULL DEFAULT 0,
         lastReviewedAt INTEGER NOT NULL,
         nextReviewAt INTEGER NOT NULL,
-        retrievability REAL NOT NULL DEFAULT 1.0
+        retrievability REAL NOT NULL DEFAULT 1.0,
+        lastResponseTime REAL,
+        easeFactor REAL,
+        timeOfDayPerformance TEXT
       )
     ''');
 
@@ -94,6 +97,19 @@ class FlashcardService {
       WHERE stability IS NULL OR stability = 0
       ''');
     }
+    
+    // Version 3: Add enhanced scheduling columns
+    if (oldVersion < 3) {
+      try {
+        await db.execute('ALTER TABLE flashcards ADD COLUMN lastResponseTime REAL');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE flashcards ADD COLUMN easeFactor REAL');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE flashcards ADD COLUMN timeOfDayPerformance TEXT');
+      } catch (_) {}
+    }
   }
 
   /// Create a new flashcard from a history entry
@@ -122,7 +138,7 @@ class FlashcardService {
 
     await db.insert(
       'flashcards',
-      flashcard.toJson(),
+      flashcard.toMap(),
       conflictAlgorithm: ConflictAlgorithm.ignore,
     );
   }
@@ -141,7 +157,7 @@ class FlashcardService {
     );
 
     return List.generate(maps.length, (i) {
-      return Flashcard.fromJson(maps[i]);
+      return Flashcard.fromMap(maps[i]);
     });
   }
 
@@ -154,7 +170,7 @@ class FlashcardService {
     );
 
     return List.generate(maps.length, (i) {
-      return Flashcard.fromJson(maps[i]);
+      return Flashcard.fromMap(maps[i]);
     });
   }
 
@@ -168,7 +184,7 @@ class FlashcardService {
     );
 
     return List.generate(maps.length, (i) {
-      return Flashcard.fromJson(maps[i]);
+      return Flashcard.fromMap(maps[i]);
     });
   }
 
@@ -191,7 +207,7 @@ class FlashcardService {
       throw Exception('Flashcard not found');
     }
     
-    var flashcard = Flashcard.fromJson(currentCards.first);
+    var flashcard = Flashcard.fromMap(currentCards.first);
     
     // Initialize scheduler if needed
     final sched = scheduler;
@@ -297,7 +313,7 @@ class FlashcardService {
     
     await db.update(
       'flashcards',
-      updatedFlashcard.toJson(),
+      updatedFlashcard.toMap(),
       where: 'id = ?',
       whereArgs: [id],
     );

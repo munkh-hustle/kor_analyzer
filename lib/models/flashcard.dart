@@ -44,6 +44,28 @@ class Flashcard {
     this.timeOfDayPerformance,
   });
   
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'paragraphId': paragraphId,
+        'paragraph': paragraph,
+        'word': word,
+        'tag': tag,
+        'definition': definition,
+        'createdAt': createdAt.millisecondsSinceEpoch,
+        'stability': stability,
+        'difficulty': difficulty,
+        'interval': interval,
+        'repetitions': repetitions,
+        'lastReviewedAt': lastReviewedAt.millisecondsSinceEpoch,
+        'nextReviewAt': nextReviewAt.millisecondsSinceEpoch,
+        'retrievability': retrievability,
+        'lastResponseTime': lastResponseTime,
+        'easeFactor': easeFactor,
+        'timeOfDayPerformance': timeOfDayPerformance != null 
+            ? jsonEncode(timeOfDayPerformance) 
+            : null,
+      };
+  
   Map<String, dynamic> toJson() => {
         'id': id,
         'paragraphId': paragraphId,
@@ -63,6 +85,28 @@ class Flashcard {
         'easeFactor': easeFactor,
         'timeOfDayPerformance': timeOfDayPerformance,
       };
+  
+  factory Flashcard.fromMap(Map<String, dynamic> json) => Flashcard(
+        id: json['id'],
+        paragraphId: json['paragraphId'],
+        paragraph: json['paragraph'],
+        word: json['word'],
+        tag: json['tag'],
+        definition: json['definition'],
+        createdAt: DateTime.fromMillisecondsSinceEpoch(json['createdAt']),
+        stability: (json['stability'] as num?)?.toDouble() ?? 0.0,
+        difficulty: (json['difficulty'] as num?)?.toDouble() ?? 0.5,
+        interval: json['interval'] ?? 0,
+        repetitions: json['repetitions'] ?? 0,
+        lastReviewedAt: DateTime.fromMillisecondsSinceEpoch(json['lastReviewedAt']),
+        nextReviewAt: DateTime.fromMillisecondsSinceEpoch(json['nextReviewAt']),
+        retrievability: (json['retrievability'] as num?)?.toDouble() ?? 1.0,
+        lastResponseTime: (json['lastResponseTime'] as num?)?.toDouble(),
+        easeFactor: (json['easeFactor'] as num?)?.toDouble(),
+        timeOfDayPerformance: json['timeOfDayPerformance'] != null 
+            ? jsonDecode(json['timeOfDayPerformance']) as Map<String, dynamic>
+            : null,
+      );
   
   factory Flashcard.fromJson(Map<String, dynamic> json) => Flashcard(
         id: json['id'],
