@@ -30,18 +30,16 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
   }
 
   Future<void> _loadDueCards() async {
-    setState(() {
-      _dueCardsFuture = _flashcardService.getDueFlashcards(limit: 20);
-    });
-    
-    final cards = await _dueCardsFuture;
+    final cards = await _flashcardService.getDueFlashcards(limit: 20);
     if (cards.isEmpty) {
       setState(() {
         _isComplete = true;
+        _reviewQueue = [];
       });
     } else {
       setState(() {
         _reviewQueue = cards;
+        _dueCardsFuture = Future.value(cards);
       });
     }
   }
@@ -100,6 +98,7 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
       _isComplete = false;
       _correctCount = 0;
       _incorrectCount = 0;
+      _reviewQueue = [];
     });
     _loadDueCards();
   }
@@ -130,45 +129,49 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
             ),
         ],
       ),
-      body: FutureBuilder<List<Flashcard>>(
-        future: _dueCardsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
+      body: _reviewQueue.isEmpty && !_isComplete
+          ? const Center(
               child: CircularProgressIndicator(),
-            );
-          }
+            )
+          : FutureBuilder<List<Flashcard>>(
+              future: _dueCardsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline_rounded,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Алдаа гарлаа: ${snapshot.error}',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline_rounded,
+                          size: 64,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Алдаа гарлаа: ${snapshot.error}',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            );
-          }
+                  );
+                }
 
-          if (_isComplete || _reviewQueue.isEmpty) {
-            return _buildCompletionScreen();
-          }
+                if (_isComplete || _reviewQueue.isEmpty) {
+                  return _buildCompletionScreen();
+                }
 
-          final flashcard = _reviewQueue[_currentIndex];
-          return _buildReviewCard(flashcard);
-        },
-      ),
+                final flashcard = _reviewQueue[_currentIndex];
+                return _buildReviewCard(flashcard);
+              },
+            ),
     );
   }
 
@@ -198,7 +201,9 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
             ),
             const SizedBox(height: 32),
             Text(
-              'Сайн байна!',
+              totalCards == 0 
+                  ? 'Давталтанд карт байхгүй' 
+                  : 'Сайн байна!',
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -207,7 +212,9 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Та энэ удаагийн давталтаа дуусгалаа.',
+              totalCards == 0
+                  ? 'Шинэ үг нэмэх эсвэл дараа ирнэ үү.'
+                  : 'Та энэ удаагийн давталтаа дуусгалаа.',
               style: TextStyle(
                 fontSize: 16,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -455,24 +462,14 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          if (flashcard.definition != null && flashcard.definition!.isNotEmpty)
-                            Text(
-                              flashcard.definition!,
-                              style: TextStyle(
-                                fontSize: 16,
-                                height: 1.5,
-                                color: Theme.of(context).colorScheme.onSecondaryContainer,
-                              ),
-                            )
-                          else
-                            Text(
-                              'Тодорхойлолт байхгүй',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontStyle: FontStyle.italic,
-                                color: Theme.of(context).colorScheme.onSecondaryContainer.withOpacity(0.7),
-                              ),
+                          Text(
+                            flashcard.definition ?? 'Тодорхойлолт байхгүй',
+                            style: TextStyle(
+                              fontSize: 16,
+                              height: 1.5,
+                              color: Theme.of(context).colorScheme.onSecondaryContainer,
                             ),
+                          ),
                         ],
                       ),
                     ),

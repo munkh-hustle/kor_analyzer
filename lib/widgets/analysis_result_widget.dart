@@ -1,7 +1,9 @@
 // lib/widgets/analysis_result_widget.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/analysis_result.dart';
 import '../services/flashcard_service.dart';
+import '../providers/korean_reader_provider.dart';
 
 class AnalysisResultWidget extends StatelessWidget {
   final List<AnalysisResult> results;
@@ -35,31 +37,62 @@ class AnalysisResultWidget extends StatelessWidget {
       return;
     }
     
-    // Create flashcard
-    await flashcardService.createFlashcard(
-      paragraphId: paragraphId!,
-      paragraph: paragraphText,
-      word: word,
-      tag: tag,
-    );
-    
+    // Show loading indicator while fetching definition
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_outline_rounded, color: Colors.white),
-              const SizedBox(width: 12),
-              Text('$word - Flashcard үүсгэв'),
-            ],
-          ),
-          backgroundColor: Colors.green.shade700,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
         ),
       );
+    }
+    
+    try {
+      // Fetch definition from dictionary using the provider from context
+      final provider = Provider.of<KoreanReaderProvider>(context, listen: false);
+      final result = await provider.getDefinitionWithMultiLang(word, tag);
+      final definition = result?['definition'] as String?;
+      
+      // Create flashcard with definition
+      await flashcardService.createFlashcard(
+        paragraphId: paragraphId!,
+        paragraph: paragraphText,
+        word: word,
+        tag: tag,
+        definition: definition,
+      );
+      
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_outline_rounded, color: Colors.white),
+                const SizedBox(width: 12),
+                Text('$word - Flashcard үүсгэв'),
+              ],
+            ),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Алдаа: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
