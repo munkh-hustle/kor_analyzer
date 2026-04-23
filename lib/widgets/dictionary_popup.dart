@@ -22,9 +22,10 @@ class DictionaryPopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Prevent keyboard from showing when dialog opens
+    // Prevent keyboard from showing when dialog opens - multiple approaches for Android
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FocusScope.of(context).unfocus();
+      FocusManager.instance.primaryFocus?.unfocus();
     });
 
     // Parse multilanList if available
@@ -59,108 +60,227 @@ class DictionaryPopup extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
-      elevation: 8,
-      shadowColor: Colors.black.withOpacity(0.2),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 450, maxHeight: 650),
-        decoration: BoxDecoration(
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              colorScheme.surface,
-              colorScheme.surfaceContainerHighest.withOpacity(0.3),
-            ],
-          ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header with gradient background
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    colorScheme.primary,
-                    colorScheme.secondary,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          word,
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
-                          padding: const EdgeInsets.all(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _buildTagChip(context, _getTagDescription(tag), colorScheme),
-                      if (gubun != null && gubun!.isNotEmpty)
-                        _buildTagChip(context, gubun!, colorScheme, isSecondary: true),
-                    ],
-                  ),
+        elevation: 8,
+        shadowColor: Colors.black.withOpacity(0.2),
+        child: FocusScope(
+          autofocus: false,
+          canRequestFocus: false,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 450, maxHeight: 650),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  colorScheme.surface,
+                  colorScheme.surfaceContainerHighest.withOpacity(0.3),
                 ],
               ),
             ),
-
-            // Content
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Multi-language translations
-                    if (multilanList != null && multilanList.isNotEmpty) ...[
-                      _buildSectionHeader(context, '다국어 번역', Icons.language_rounded),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header with gradient background
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        colorScheme.primary,
+                        colorScheme.secondary,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              word,
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon:
+                                  const Icon(Icons.close, color: Colors.white),
+                              onPressed: () => Navigator.pop(context),
+                              padding: const EdgeInsets.all(4),
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 12),
-                      ...multilanList.map((item) {
-                        final translation = item['multi_translation'] ?? '';
-                        final multiDef = item['multi_definition'] ?? '';
-                        final nationCodeName = item['nation_code_name'] ?? '';
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _buildTagChip(
+                              context, _getTagDescription(tag), colorScheme),
+                          if (gubun != null && gubun!.isNotEmpty)
+                            _buildTagChip(context, gubun!, colorScheme,
+                                isSecondary: true),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
 
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Container(
+                // Content
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Multi-language translations
+                        if (multilanList != null &&
+                            multilanList.isNotEmpty) ...[
+                          _buildSectionHeader(
+                              context, '다국어 번역', Icons.language_rounded),
+                          const SizedBox(height: 12),
+                          ...multilanList.map((item) {
+                            final translation = item['multi_translation'] ?? '';
+                            final multiDef = item['multi_definition'] ?? '';
+                            final nationCodeName =
+                                item['nation_code_name'] ?? '';
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surfaceContainerHighest
+                                      .withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: colorScheme.outline.withOpacity(0.1),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          _getLanguageFlag(nationCodeName),
+                                          style: const TextStyle(fontSize: 20),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          nationCodeName,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: colorScheme.primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (translation.isNotEmpty) ...[
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        translation,
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                    if (multiDef.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        multiDef,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: colorScheme.onSurfaceVariant,
+                                          height: 1.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ],
+
+                        // Korean Definition
+                        _buildSectionHeader(
+                            context, '뜻', Icons.menu_book_rounded),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color:
+                                colorScheme.secondaryContainer.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: colorScheme.outline.withOpacity(0.1),
+                            ),
+                          ),
+                          child: definition == null || definition!.isEmpty
+                              ? Row(
+                                  children: [
+                                    Icon(
+                                      Icons.info_outline,
+                                      color: colorScheme.outline,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        '사전에 등록되지 않은 단어입니다.',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          color: colorScheme.outline,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  definition!,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    height: 1.7,
+                                  ),
+                                ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Usage examples
+                        if ((examList2 != null && examList2.isNotEmpty) ||
+                            (examList3 != null && examList3.isNotEmpty)) ...[
+                          _buildSectionHeader(
+                              context, '사용 예', Icons.format_quote_rounded),
+                          const SizedBox(height: 12),
+                          Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                              color: colorScheme.tertiaryContainer
+                                  .withOpacity(0.5),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: colorScheme.outline.withOpacity(0.1),
@@ -169,171 +289,76 @@ class DictionaryPopup extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      _getLanguageFlag(nationCodeName),
-                                      style: const TextStyle(fontSize: 20),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      nationCodeName,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: colorScheme.primary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (translation.isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    translation,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                                // Sentence examples (examList2)
+                                if (examList2 != null &&
+                                    examList2.isNotEmpty) ...[
+                                  ...examList2.map((exam) {
+                                    final example =
+                                        exam['example']?.toString() ?? '';
+                                    if (example.isEmpty)
+                                      return const SizedBox.shrink();
+                                    return _buildExampleItem(
+                                        context, example, false);
+                                  }).toList(),
                                 ],
-                                if (multiDef.isNotEmpty) ...[
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    multiDef,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: colorScheme.onSurfaceVariant,
-                                      height: 1.5,
-                                    ),
-                                  ),
+                                // Dialogue examples (examList3)
+                                if (examList3 != null &&
+                                    examList3.isNotEmpty) ...[
+                                  if (examList2 != null && examList2.isNotEmpty)
+                                    const SizedBox(height: 12),
+                                  ...examList3.map((exam) {
+                                    final example =
+                                        exam['example']?.toString() ?? '';
+                                    if (example.isEmpty)
+                                      return const SizedBox.shrink();
+                                    return _buildExampleItem(
+                                        context, example, true);
+                                  }).toList(),
                                 ],
                               ],
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ],
-
-                    // Korean Definition
-                    _buildSectionHeader(context, '뜻', Icons.menu_book_rounded),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondaryContainer.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: colorScheme.outline.withOpacity(0.1),
-                        ),
-                      ),
-                      child: definition == null || definition!.isEmpty
-                          ? Row(
+                        ] else ...[
+                          // Fallback placeholder if no examples
+                          _buildSectionHeader(
+                              context, '사용 예', Icons.format_quote_rounded),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: colorScheme.tertiaryContainer
+                                  .withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
                               children: [
                                 Icon(
-                                  Icons.info_outline,
-                                  color: colorScheme.outline,
+                                  Icons.lightbulb_outline,
+                                  color: colorScheme.tertiary,
                                   size: 20,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    '사전에 등록되지 않은 단어입니다.',
+                                    '이 단어는 문장에서 "$word"와 같이 사용됩니다.',
                                     style: TextStyle(
-                                      fontSize: 15,
-                                      color: colorScheme.outline,
+                                      fontSize: 14,
+                                      color: colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ),
                               ],
-                            )
-                          : Text(
-                              definition!,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                height: 1.7,
-                              ),
                             ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Usage examples
-                    if ((examList2 != null && examList2.isNotEmpty) ||
-                        (examList3 != null && examList3.isNotEmpty)) ...[
-                      _buildSectionHeader(context, '사용 예', Icons.format_quote_rounded),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: colorScheme.tertiaryContainer.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: colorScheme.outline.withOpacity(0.1),
                           ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Sentence examples (examList2)
-                            if (examList2 != null && examList2.isNotEmpty) ...[
-                              ...examList2.map((exam) {
-                                final example = exam['example']?.toString() ?? '';
-                                if (example.isEmpty) return const SizedBox.shrink();
-                                return _buildExampleItem(context, example, false);
-                              }).toList(),
-                            ],
-                            // Dialogue examples (examList3)
-                            if (examList3 != null && examList3.isNotEmpty) ...[
-                              if (examList2 != null && examList2.isNotEmpty)
-                                const SizedBox(height: 12),
-                              ...examList3.map((exam) {
-                                final example = exam['example']?.toString() ?? '';
-                                if (example.isEmpty) return const SizedBox.shrink();
-                                return _buildExampleItem(context, example, true);
-                              }).toList(),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ] else ...[
-                      // Fallback placeholder if no examples
-                      _buildSectionHeader(context, '사용 예', Icons.format_quote_rounded),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: colorScheme.tertiaryContainer.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.lightbulb_outline,
-                              color: colorScheme.tertiary,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                '이 단어는 문장에서 "$word"와 같이 사용됩니다.',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
+          ),
+        ));
   }
 
   Widget _buildTagChip(
@@ -360,7 +385,8 @@ class DictionaryPopup extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
+  Widget _buildSectionHeader(
+      BuildContext context, String title, IconData icon) {
     final colorScheme = Theme.of(context).colorScheme;
     return Row(
       children: [
