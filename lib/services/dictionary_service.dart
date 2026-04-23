@@ -10,6 +10,23 @@ import 'dart:typed_data';
 class DictionaryService {
   Database? _database;
   bool _initialized = false;
+  bool _isLoading = false;
+  double _loadingProgress = 0.0;
+  int _loadedFilesCount = 0;
+  int _totalFilesCount = 0;
+  int _totalEntriesLoaded = 0;
+
+  bool get isLoading => _isLoading;
+  double get loadingProgress => _loadingProgress;
+  int get loadedFilesCount => _loadedFilesCount;
+  int get totalFilesCount => _totalFilesCount;
+  int get totalEntriesLoaded => _totalEntriesLoaded;
+
+  Function()? onProgressChanged;
+
+  void _notifyProgress() {
+    onProgressChanged?.call();
+  }
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -79,6 +96,14 @@ class DictionaryService {
       }
     }
 
+    // Set loading state
+    _isLoading = true;
+    _totalFilesCount = dictionaryFiles.length;
+    _loadedFilesCount = 0;
+    _totalEntriesLoaded = 0;
+    _loadingProgress = 0.0;
+    _notifyProgress();
+
     print('Found ${dictionaryFiles.length} dictionary JSON files to load');
 
     int totalInserted = 0;
@@ -115,6 +140,10 @@ class DictionaryService {
         print(
             'Inserted $fileInserted entries from $filePath (File $fileCount/${dictionaryFiles.length})');
         totalInserted += fileInserted;
+        _loadedFilesCount = fileCount;
+        _totalEntriesLoaded = totalInserted;
+        _loadingProgress = fileCount / dictionaryFiles.length;
+        _notifyProgress();
 
         // Force garbage collection hint by yielding and waiting
         await Future.delayed(Duration(milliseconds: 100));
@@ -125,10 +154,18 @@ class DictionaryService {
       } catch (e) {
         print('Error loading dictionary file $filePath: $e');
         // Continue with next file even if one fails
+        _loadedFilesCount = fileCount;
+        _loadingProgress = fileCount / dictionaryFiles.length;
+        _notifyProgress();
       }
     }
 
     print('Total dictionary entries inserted: $totalInserted');
+    
+    // Loading complete
+    _isLoading = false;
+    _loadingProgress = 1.0;
+    _notifyProgress();
     
     // Verify that 마음 was inserted by querying the temp database
     print('=== Verifying 마음 in database ===');
