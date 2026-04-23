@@ -24,8 +24,9 @@ class SearchHistoryService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDatabase,
+      onUpgrade: _upgradeDatabase,
     );
   }
 
@@ -55,6 +56,12 @@ class SearchHistoryService {
     await db.execute('''
       CREATE INDEX idx_search_word ON search_history(word)
     ''');
+  }
+
+  Future<void> _upgradeDatabase(Database db, int oldVersion, int newVersion) async {
+    // Drop and recreate table since history is transient data
+    await db.execute('DROP TABLE IF EXISTS search_history');
+    await _createDatabase(db, newVersion);
   }
 
   /// Save a search entry - updates timestamp if word already exists

@@ -4,49 +4,46 @@ __pycache__/
 *.o
 *.obj
 *.class
-*.exe
 *.dll
 *.so
 *.a
 *.out
+*.exe
 
 # Dependencies
-.venv/
-venv/
 node_modules/
+venv/
+.venv/
+.env
+.env.local
+.env.*
+
+# Build directories
 dist/
 build/
 target/
 .gradle/
+
+# Cache directories
 .mypy_cache/
 .pytest_cache/
 coverage/
 htmlcov/
-*.egg-info/
+.cargo/
+.npm/
+.yarn/
 
-# Logs and temp files
-*.log
-*.tmp
-*.swp
-*.swo
-*.bak
-*.~
-*~
-
-# Environment and config
-.env
-.env.local
-.env.*
-!.env.example
-
-# Editors and IDEs
+# IDE and editor files
 .vscode/
 .idea/
-*.iml
-*.ipr
-*.iws
+*.swp
+*.swo
+*.tmp
+
+# System files
 .DS_Store
 Thumbs.db
+*.log
 
 # Compressed files
 *.zip
@@ -71,16 +68,3 @@ Thumbs.db
 *.tar.bz2
 *.tar.xz
 *.tar.zst
-
-# Dart/Flutter specific
-.dart_tool/
-.packages
-.pub-cache/
-.pub/
-build/
-*.g.dart
-*.freezed.dart
-*.gen.dart
-
-# Original rules preserved
-*.log
