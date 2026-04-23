@@ -26,10 +26,10 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
   @override
   void initState() {
     super.initState();
-    _loadDueCards();
+    _dueCardsFuture = _loadDueCards();
   }
 
-  Future<void> _loadDueCards() async {
+  Future<List<Flashcard>> _loadDueCards() async {
     final cards = await _flashcardService.getDueFlashcards(limit: 20);
     if (cards.isEmpty) {
       setState(() {
@@ -39,9 +39,9 @@ class _FlashcardReviewScreenState extends State<FlashcardReviewScreen> {
     } else {
       setState(() {
         _reviewQueue = cards;
-        _dueCardsFuture = Future.value(cards);
       });
     }
+    return cards;
   }
 
   void _showAnswerCard() {
