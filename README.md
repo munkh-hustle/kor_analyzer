@@ -1,34 +1,10 @@
---- README.md (原始)
-# Korean Reader App
-
-A Flutter-based Korean language learning application that provides instant morphological analysis and dictionary definitions for Korean text, working completely offline once the dictionary is downloaded.
-
-## Features
-
-- **Text Input**: Manual text entry for Korean sentences
-- **Morphological Analysis**: Automatically splits Korean text into individual morphemes with part-of-speech tags
-- **Stemming**: Converts conjugated forms to dictionary base forms
-- **Particle Detection**: Separates grammatical particles from content words
-- **Dictionary Lookup**: Tap any morpheme to see its definition
-- **Offline Operation**: Works entirely offline after initial dictionary download
-
-## Installation
-
-### Prerequisites
-- Flutter SDK (>=3.0.0)
-- Android SDK (for Android development)
-- Android API Level 21+ (minimum)
-
-### Steps
-1. **Clone the repository**
-```bash
-git clone https://github.com/yourusername/korean_reader.git
-cd korean_reader
-
-+++ README.md (修改后)
 # Korean Reader App 🇰🇷
 
 A comprehensive Flutter-based Korean language learning application that provides instant morphological analysis and dictionary definitions for Korean text. The app works completely offline once the dictionary database is initialized, making it perfect for studying anywhere without internet connectivity.
+
+**Current Version:** 0.1.0  
+**Package Name:** kor_analyzer  
+**Minimum SDK:** Dart 3.0.0+  
 
 ![Flutter](https://img.shields.io/badge/Flutter-3.0+-blue.svg)
 ![Platform](https://img.shields.io/badge/Platform-Android-green.svg)
