@@ -34,19 +34,19 @@ class _SearchHistoryScreenState extends State<SearchHistoryScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('검색 기록 삭제'),
-        content: const Text('모든 검색 기록을 삭제하시겠습니까?'),
+        title: const Text('Delete Search History'),
+        content: const Text('Are you sure you want to delete all search history?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red,
             ),
-            child: const Text('삭제'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -58,7 +58,7 @@ class _SearchHistoryScreenState extends State<SearchHistoryScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('모든 검색 기록을 삭제했습니다.'),
+            content: Text('All search history has been deleted.'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -72,10 +72,10 @@ class _SearchHistoryScreenState extends State<SearchHistoryScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${entry.word} 삭제됨.'),
+          content: Text('${entry.word} deleted.'),
           behavior: SnackBarBehavior.floating,
           action: SnackBarAction(
-            label: '실행 취소',
+            label: 'Undo',
             onPressed: _refreshHistory,
           ),
         ),
@@ -108,7 +108,7 @@ class _SearchHistoryScreenState extends State<SearchHistoryScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('단어를 복사했습니다.'),
+          content: Text('Word copied.'),
           behavior: SnackBarBehavior.floating,
           duration: Duration(seconds: 1),
         ),
@@ -122,14 +122,14 @@ class _SearchHistoryScreenState extends State<SearchHistoryScreen> {
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: const Text(
-          '검색 기록',
+          'Search History',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_sweep_rounded),
             onPressed: _clearAllHistory,
-            tooltip: '모두 삭제',
+            tooltip: 'Delete All',
           ),
         ],
       ),
@@ -154,7 +154,7 @@ class _SearchHistoryScreenState extends State<SearchHistoryScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    '오류 발생: ${snapshot.error}',
+                    'Error: ${snapshot.error}',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
                     ),
@@ -185,7 +185,7 @@ class _SearchHistoryScreenState extends State<SearchHistoryScreen> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    '검색 기록이 없습니다.',
+                    'No search history.',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 18,
@@ -194,7 +194,7 @@ class _SearchHistoryScreenState extends State<SearchHistoryScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '단어를 검색하면 여기에 기록이 저장됩니다.',
+                    'Searched words will be saved here.',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.outline,
                       fontSize: 14,
@@ -234,19 +234,19 @@ class _SearchHistoryScreenState extends State<SearchHistoryScreen> {
                     return await showDialog(
                       context: context,
                       builder: (context) => AlertDialog(
-                        title: const Text('삭제'),
-                        content: const Text('이 항목을 삭제하시겠습니까?'),
+                        title: const Text('Delete'),
+                        content: const Text('Are you sure you want to delete this item?'),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context, false),
-                            child: const Text('취소'),
+                            child: const Text('Cancel'),
                           ),
                           FilledButton(
                             onPressed: () => Navigator.pop(context, true),
                             style: FilledButton.styleFrom(
                               backgroundColor: Colors.red,
                             ),
-                            child: const Text('삭제'),
+                            child: const Text('Delete'),
                           ),
                         ],
                       ),
@@ -334,7 +334,7 @@ class _SearchHistoryScreenState extends State<SearchHistoryScreen> {
                             IconButton(
                               icon: const Icon(Icons.copy_rounded, size: 20),
                               onPressed: () => _copyWord(entry),
-                              tooltip: '복사',
+                              tooltip: 'Copy',
                               color: Theme.of(context).colorScheme.primary,
                             ),
                           ],
