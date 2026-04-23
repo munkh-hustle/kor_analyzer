@@ -6,7 +6,7 @@ This document contains suggested features, improvements, and enhancements for th
 
 ### 1. User Experience Enhancements
 
-#### 1.1 Search History
+#### ✅1.1 Search History
 - **Description**: Implement a search history feature to track previously looked-up words
 - **Benefits**: 
   - Users can quickly revisit recently studied words
