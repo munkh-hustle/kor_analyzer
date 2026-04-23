@@ -96,6 +96,10 @@ class _UpcomingReviewScreenState extends State<UpcomingReviewScreen> {
           final groupedCards = _groupCardsByDate(allCards);
           final sortedDates = groupedCards.keys.toList()..sort((a, b) => a.compareTo(b));
           
+          // Debug info
+          final intervalDistribution = _getIntervalDistribution(allCards);
+          final sampleDebugInfo = _getSampleCardDebugInfo(allCards);
+          
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -103,6 +107,11 @@ class _UpcomingReviewScreenState extends State<UpcomingReviewScreen> {
               children: [
                 // Summary Card
                 _buildSummaryCard(context, allCards),
+                
+                const SizedBox(height: 24),
+                
+                // Debug Info Section
+                _buildDebugSection(context, allCards, intervalDistribution, sampleDebugInfo),
                 
                 const SizedBox(height: 24),
                 
@@ -155,6 +164,52 @@ class _UpcomingReviewScreenState extends State<UpcomingReviewScreen> {
     }
     
     return grouped;
+  }
+
+  /// Debug info: Show interval distribution
+  Map<String, int> _getIntervalDistribution(List<Flashcard> cards) {
+    final Map<String, int> distribution = {};
+    for (var card in cards) {
+      final intervalDays = card.interval;
+      String range;
+      if (intervalDays == 0) {
+        range = '0 (Шинэ)';
+      } else if (intervalDays == 1) {
+        range = '1 өдөр';
+      } else if (intervalDays <= 3) {
+        range = '2-3 өдөр';
+      } else if (intervalDays <= 7) {
+        range = '4-7 өдөр';
+      } else if (intervalDays <= 14) {
+        range = '8-14 өдөр';
+      } else if (intervalDays <= 30) {
+        range = '15-30 өдөр';
+      } else {
+        range = '30+ өдөр';
+      }
+      distribution[range] = (distribution[range] ?? 0) + 1;
+    }
+    return distribution;
+  }
+
+  /// Debug info: Show sample of next review calculations
+  List<Map<String, dynamic>> _getSampleCardDebugInfo(List<Flashcard> cards) {
+    final now = DateTime.now();
+    final samples = cards.take(5).map((card) {
+      final nextReview = card.nextReviewAt;
+      final daysFromNow = nextReview.difference(now).inDays;
+      return {
+        'word': card.word,
+        'interval': card.interval,
+        'stability': card.stability,
+        'difficulty': card.difficulty,
+        'repetitions': card.repetitions,
+        'nextReview': nextReview,
+        'daysFromNow': daysFromNow,
+        'lastReviewed': card.lastReviewedAt,
+      };
+    }).toList();
+    return samples;
   }
 
   Widget _buildSummaryCard(BuildContext context, List<Flashcard> allCards) {
@@ -492,5 +547,166 @@ class _UpcomingReviewScreenState extends State<UpcomingReviewScreen> {
     const weekdays = ['Бямба', 'Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан'];
     
     return '${weekdays[date.weekday % 7]}, ${months[date.month]} ${date.day}';
+  }
+
+  Widget _buildDebugSection(
+    BuildContext context,
+    List<Flashcard> allCards,
+    Map<String, int> intervalDistribution,
+    List<Map<String, dynamic>> sampleDebugInfo,
+  ) {
+    return ExpansionTile(
+      leading: Icon(Icons.bug_report_rounded, color: Theme.of(context).colorScheme.tertiary),
+      title: Text(
+        '🔍 Debug мэдээлэл (FSRS хуваарь)',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: Theme.of(context).colorScheme.tertiary,
+        ),
+      ),
+      subtitle: Text(
+        'Хэрэглэгчийн асуудал: "Easy 7 өдөр дарсан ч маргааш гэж гарч байна"',
+        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline),
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Interval Distribution
+              Text(
+                'Интервалын тархалт:',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: intervalDistribution.entries.map((entry) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${entry.key}: ${entry.value}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Sample Card Details
+              Text(
+                'Дээж картны FSRS төлөв (эхний 5):',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...sampleDebugInfo.map((info) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Үг: ${info['word']}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text('Интервал: ${info['interval']} өдөр', style: const TextStyle(fontSize: 12)),
+                      Text('Тогтвортой байдал (Stability): ${info['stability'].toStringAsFixed(2)}', style: const TextStyle(fontSize: 12)),
+                      Text('Хэцүү байдал (Difficulty): ${info['difficulty'].toStringAsFixed(2)}', style: const TextStyle(fontSize: 12)),
+                      Text('Давталт: ${info['repetitions']}', style: const TextStyle(fontSize: 12)),
+                      Text('Сүүлийн давталт: ${_formatDateTime(info['lastReviewed'])}', style: const TextStyle(fontSize: 12)),
+                      Text('Дараагийн давталт: ${_formatDateTime(info['nextReview'])}', style: const TextStyle(fontSize: 12)),
+                      Text(
+                        'Одоогоос: ${info['daysFromNow']} өдөр ${info['daysFromNow'] > 0 ? 'дараа' : 'өмнө'}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: info['daysFromNow'] <= 0 
+                              ? Theme.of(context).colorScheme.error
+                              : Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+              
+              const SizedBox(height: 16),
+              
+              // Explanation
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.blue.shade200,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.info_outline_rounded, size: 18, color: Colors.blue),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Тайлбар:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '• FSRS алгоритм нь "Easy" дарсан ч интервалыг зөвхөн 7 өдөр гэж тооцдоггүй.\n'
+                      '• Интервал нь таны картны өмнөх төлөвөөс (stability, difficulty) хамаарна.\n'
+                      '• Шинэ картны хувьд "Easy" нь ~7 өдөр өгдөг ч, давтагдсан картны хувьд өөр байна.\n'
+                      '• Хэрэв картны difficulty өндөр бол Easy дарсан ч богино интервал гарч болно.\n'
+                      '• Дээрх debug мэдээллээс картныхаа одоогийн төлөвийг харж шалгана уу.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDateTime(DateTime dt) {
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 }
