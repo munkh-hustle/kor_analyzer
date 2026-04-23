@@ -22,9 +22,10 @@ class DictionaryPopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Prevent keyboard from showing when dialog opens
+    // Prevent keyboard from showing when dialog opens - multiple approaches for Android
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FocusScope.of(context).unfocus();
+      FocusManager.instance.primaryFocus?.unfocus();
     });
 
     // Parse multilanList if available
@@ -64,8 +65,11 @@ class DictionaryPopup extends StatelessWidget {
       ),
       elevation: 8,
       shadowColor: Colors.black.withOpacity(0.2),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 450, maxHeight: 650),
+      child: FocusScope(
+        autofocus: false,
+        canRequestFocus: false,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 450, maxHeight: 650),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           gradient: LinearGradient(

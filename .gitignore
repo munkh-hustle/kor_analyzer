@@ -1,53 +1,28 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+```
+# Build artifacts
+*.dart_tool/
+*.build/
+build/
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
+# Dependencies
 .pub/
-/build/
-/coverage/
+pubspec.lock
 
-# Symbolication related
-app.*.symbols
+# Logs
+*.log
 
-# Obfuscation related
-app.*.map.json
+# Environment
+.env
+.env.local
+*.env.*
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
 
-/assets/dictionary data/word_level02_01.json
-/assets/dictionary data/word_level02_02.json
-/assets/dictionary data/word_level02_03.json
-/assets/dictionary data/word_level02_04.json
-/assets/dictionary data/word_level03_01.json
-/assets/dictionary data/word_level03_02.json
-/assets/dictionary data/word_level03_03.json
-/assets/dictionary data/word_level03_04.json
-/assets/dictionary data/word_level03_05.json
-/assets/dictionary data/word_level03_06.json
-/assets/dictionary data/word_level03_07.json
-/assets/dictionary data/word_level04_01.json
+# OS generated files
+.DS_Store
+Thumbs.db
+```

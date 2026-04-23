@@ -402,6 +402,9 @@ class _TextInputScreenState extends State<TextInputScreen>
     // If a matchedWord is returned (prefix match), show that in the popup
     final displayWord = result?['matchedWord'] as String? ?? word;
 
+    // Unfocus any current focus to prevent keyboard from showing
+    FocusScope.of(context).unfocus();
+
     showDialog(
       context: context,
       barrierDismissible: true,
