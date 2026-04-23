@@ -28,17 +28,6 @@ This document contains suggested features, improvements, and enhancements for th
   - Support categorization/tagging of favorite words
   - Export/import favorites as JSON or CSV
 
-#### 1.3 Clipboard Detection
-- **Description**: Automatically detect Korean text copied to clipboard
-- **Benefits**:
-  - Quick lookup from other apps
-  - Seamless integration with reading workflows
-- **Implementation Details**:
-  - Listen for clipboard changes using flutter_services or similar
-  - Show notification or toast when Korean text detected
-  - Option to auto-analyze or prompt user
-  - Configurable sensitivity (always ask vs. automatic)
-
 ### 2. Learning Tools
 
 #### 2.1 Quiz Mode
@@ -96,28 +85,6 @@ This document contains suggested features, improvements, and enhancements for th
     - Alternative 3-button for simplicity: Wrong, Hesitant, Correct
     - Record response time for each review
     - Allow editing grade immediately after submission
-
-#### 2.3 Vocabulary Lists by Level
-- **Description**: Organize words by proficiency level (TOPIK-style)
-- **Benefits**:
-  - Structured learning path
-  - Goal-oriented study sessions
-- **Implementation Details**:
-  - Tag dictionary entries with difficulty levels
-  - Create level-based study modules
-  - Progress tracking per level
-  - Achievement badges for completing levels
-
-#### 2.3 Example Sentence Audio
-- **Description**: Add text-to-speech for example sentences
-- **Benefits**:
-  - Improve pronunciation
-  - Multi-modal learning (visual + auditory)
-- **Implementation Details**:
-  - Integrate Flutter TTS plugin
-  - Korean voice selection
-  - Playback speed control
-  - Offline TTS support where possible
 
 ## 🔧 Medium Priority Improvements
 

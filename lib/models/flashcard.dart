@@ -10,12 +10,14 @@ class Flashcard {
   final String? definition; // Definition from dictionary
   final DateTime createdAt;
   
-  // SRS Fields (Anki-style SM-2 algorithm)
+  // FSRS Fields (replacing SM-2 algorithm)
+  final double stability; // Memory stability in days
+  final double difficulty; // Difficulty level (0-1, lower is easier)
   final int interval; // Days until next review
-  final double easeFactor; // Ease factor (starts at 2.5)
   final int repetitions; // Number of successful reviews
   final DateTime lastReviewedAt;
   final DateTime nextReviewAt;
+  final double retrievability; // Current probability of recall
   
   Flashcard({
     required this.id,
@@ -25,11 +27,13 @@ class Flashcard {
     required this.tag,
     this.definition,
     required this.createdAt,
+    this.stability = 0.0,
+    this.difficulty = 0.5,
     this.interval = 0,
-    this.easeFactor = 2.5,
     this.repetitions = 0,
     required this.lastReviewedAt,
     required this.nextReviewAt,
+    this.retrievability = 1.0,
   });
   
   Map<String, dynamic> toJson() => {
@@ -40,11 +44,13 @@ class Flashcard {
         'tag': tag,
         'definition': definition,
         'createdAt': createdAt.millisecondsSinceEpoch,
+        'stability': stability,
+        'difficulty': difficulty,
         'interval': interval,
-        'easeFactor': easeFactor,
         'repetitions': repetitions,
         'lastReviewedAt': lastReviewedAt.millisecondsSinceEpoch,
         'nextReviewAt': nextReviewAt.millisecondsSinceEpoch,
+        'retrievability': retrievability,
       };
   
   factory Flashcard.fromJson(Map<String, dynamic> json) => Flashcard(
@@ -55,11 +61,13 @@ class Flashcard {
         tag: json['tag'],
         definition: json['definition'],
         createdAt: DateTime.fromMillisecondsSinceEpoch(json['createdAt']),
+        stability: (json['stability'] as num?)?.toDouble() ?? 0.0,
+        difficulty: (json['difficulty'] as num?)?.toDouble() ?? 0.5,
         interval: json['interval'] ?? 0,
-        easeFactor: (json['easeFactor'] as num?)?.toDouble() ?? 2.5,
         repetitions: json['repetitions'] ?? 0,
         lastReviewedAt: DateTime.fromMillisecondsSinceEpoch(json['lastReviewedAt']),
         nextReviewAt: DateTime.fromMillisecondsSinceEpoch(json['nextReviewAt']),
+        retrievability: (json['retrievability'] as num?)?.toDouble() ?? 1.0,
       );
   
   /// Check if the card is due for review
