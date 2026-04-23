@@ -461,9 +461,6 @@ class DictionaryService {
               print(
                   '=== Parsed entry: word="$word" (len=${word.length}, bytes=${word.codeUnits}), tag="$tag", gubun="$gubun" ===');
             }
-            if (word == '마음') {
-              print('=== FOUND 마음! Inserting into DB ===');
-            }
 
             // Extract definition from senseInfo
             String definition = '';
