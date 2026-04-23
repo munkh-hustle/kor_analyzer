@@ -51,9 +51,7 @@ class HistoryService {
     ''');
   }
 
-  /// Save a new reading history entry
-  /// Automatically removes oldest entries if we exceed 50
-  Future<void> saveHistory(String text) async {
+  Future<String> saveHistory(String text) async {
     final db = await database;
     final now = DateTime.now();
     final id = '${now.millisecondsSinceEpoch}';
@@ -78,6 +76,9 @@ class HistoryService {
 
     // Clean up old entries - keep only last 50
     await _cleanupOldEntries();
+    
+    // Return the ID for flashcard creation
+    return id;
   }
 
   /// Remove oldest entries to keep only the last 50

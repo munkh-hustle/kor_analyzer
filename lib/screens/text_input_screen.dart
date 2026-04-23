@@ -18,6 +18,7 @@ class _TextInputScreenState extends State<TextInputScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   bool _showResults = false;
+  String? _currentParagraphId; // Store the current paragraph ID for flashcards
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -70,8 +71,15 @@ class _TextInputScreenState extends State<TextInputScreen>
     provider.analyzeText(_textController.text);
     _animationController.forward(from: 0);
     
-    // Save to reading history
-    HistoryService().saveHistory(_textController.text);
+    // Save to reading history and get the entry ID
+    HistoryService().saveHistory(_textController.text).then((entryId) {
+      if (mounted) {
+        // Update the analysis result widget with the paragraph ID
+        setState(() {
+          _currentParagraphId = entryId;
+        });
+      }
+    });
   }
 
   void _clearText() {
@@ -245,6 +253,8 @@ class _TextInputScreenState extends State<TextInputScreen>
                   opacity: _fadeAnimation,
                   child: AnalysisResultWidget(
                     results: provider.currentResults,
+                    paragraphId: _currentParagraphId,
+                    paragraphText: _textController.text,
                     onWordTap: (word, tag) {
                       _showDefinition(context, word, tag, provider);
                     },
