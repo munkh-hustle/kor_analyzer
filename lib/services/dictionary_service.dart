@@ -368,21 +368,23 @@ class DictionaryService {
                             }
                           }
 
-                          // Build combined definition with Mongolian, English, and Korean
+                          // Build combined definition with Mongolian and English only (no Korean)
                           List<String> defParts = [];
                           if (mongolianDefinition.isNotEmpty) {
-                            defParts.add('🇲🇳 몽골어: $mongolianDefinition');
+                            defParts.add('🇲🇳 몽гол: $mongolianDefinition');
                           }
                           if (englishDefinition.isNotEmpty) {
-                            defParts.add('🇬🇧 영어: $englishDefinition');
-                          }
-                          if (koreanDefinition.isNotEmpty) {
-                            defParts.add('🇰🇷 한국어: $koreanDefinition');
+                            defParts.add('🇬🇧 English: $englishDefinition');
                           }
 
-                          // If no specific language definitions found, use first available
+                          // If no specific language definitions found, use first available (but prefer non-Korean)
                           if (defParts.isEmpty && firstDefinition.isNotEmpty) {
-                            definition = firstDefinition;
+                            // Only use firstDefinition if it's not Korean
+                            if (!firstDefinition.contains('한국어') && !firstDefinition.contains('Korean')) {
+                              definition = firstDefinition;
+                            } else {
+                              definition = 'No definition available';
+                            }
                           } else {
                             definition = defParts.join('\n\n');
                           }
@@ -521,20 +523,60 @@ class DictionaryService {
                   senseDataList.isNotEmpty) {
                 var firstSense = senseDataList[0];
 
-                // Get definition - handle both string and list formats
+                // Get definition - handle both string and list formats (prefer Mongolian/English, skip Korean)
                 var definitionData = firstSense['definition'];
                 if (definitionData != null) {
                   if (definitionData is String) {
-                    definition = definitionData;
+                    // Skip Korean-only definitions
+                    if (!definitionData.contains('한국어') && !definitionData.contains('Korean')) {
+                      definition = definitionData;
+                    }
                   } else if (definitionData is List &&
                       definitionData.isNotEmpty) {
-                    definition = definitionData[0]['content'] ?? '';
+                    // Try to find non-Korean definition from list
+                    for (var defItem in definitionData) {
+                      var content = defItem['content'] ?? '';
+                      if (content.isNotEmpty && 
+                          !content.contains('한국어') && 
+                          !content.contains('Korean')) {
+                        definition = content;
+                        break;
+                      }
+                    }
+                    // Fallback to first if no non-Korean found
+                    if (definition.isEmpty) {
+                      definition = definitionData[0]['content'] ?? '';
+                    }
                   }
                 }
 
-                // Get multilanList for multi-language translations
+                // Get multilanList for multi-language translations (Mongolian and English only)
                 var multilanList = firstSense['multilanList'];
                 if (multilanList != null && multilanList is List) {
+                  // Extract Mongolian and English translations from multilanList
+                  List<String> mnEnDefinitions = [];
+                  
+                  for (var langItem in multilanList) {
+                    if (langItem is Map) {
+                      var langCode = langItem['lang_code']?.toString() ?? '';
+                      var definitionText = langItem['definition']?.toString() ?? '';
+                      
+                      // Only include Mongolian (mn) and English (en) definitions
+                      if (definitionText.isNotEmpty && 
+                          (langCode == 'mn' || langCode == 'en' || 
+                           langCode.toLowerCase().contains('mongol') ||
+                           langCode.toLowerCase().contains('english'))) {
+                        String flag = langCode == 'mn' || langCode.toLowerCase().contains('mongol') ? '🇲🇳 몽гол: ' : '🇬🇧 English: ';
+                        mnEnDefinitions.add('$flag$definitionText');
+                      }
+                    }
+                  }
+                  
+                  // If we found Mongolian/English definitions, use them
+                  if (mnEnDefinitions.isNotEmpty) {
+                    definition = mnEnDefinitions.join('\n\n');
+                  }
+                  
                   try {
                     multilanListJson = json.encode(multilanList);
                   } catch (e) {
