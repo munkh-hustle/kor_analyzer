@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/reading_history.dart';
 import '../services/history_service.dart';
+import '../services/flashcard_service.dart';
+import 'flashcard_review_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -13,17 +15,21 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   final HistoryService _historyService = HistoryService();
+  final FlashcardService _flashcardService = FlashcardService();
   late Future<List<ReadingHistoryEntry>> _historyFuture;
+  late Future<int> _dueCardsCount;
 
   @override
   void initState() {
     super.initState();
     _historyFuture = _historyService.getHistory();
+    _dueCardsCount = _flashcardService.getDueCount();
   }
 
   void _refreshHistory() {
     setState(() {
       _historyFuture = _historyService.getHistory();
+      _dueCardsCount = _flashcardService.getDueCount();
     });
   }
 
@@ -51,6 +57,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     if (confirmed == true) {
       await _historyService.clearAllHistory();
+      await _flashcardService.clearAllFlashcards();
       _refreshHistory();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -64,6 +71,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _deleteEntry(ReadingHistoryEntry entry) async {
+    // Also delete associated flashcards
+    await _flashcardService.deleteFlashcardsByParagraph(entry.id);
+    
     await _historyService.deleteHistoryEntry(entry.id);
     _refreshHistory();
     if (mounted) {
@@ -103,6 +113,52 @@ class _HistoryScreenState extends State<HistoryScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          // Flashcard review button with badge
+          FutureBuilder<int>(
+            future: _dueCardsCount,
+            builder: (context, snapshot) {
+              final count = snapshot.data ?? 0;
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.school_rounded),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const FlashcardReviewScreen()),
+                      ).then((_) => _refreshHistory());
+                    },
+                    tooltip: 'Flashcard Review',
+                  ),
+                  if (count > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '$count',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.delete_sweep_rounded),
             onPressed: _clearAllHistory,

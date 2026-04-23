@@ -1,16 +1,67 @@
 // lib/widgets/analysis_result_widget.dart
 import 'package:flutter/material.dart';
 import '../models/analysis_result.dart';
+import '../services/flashcard_service.dart';
 
 class AnalysisResultWidget extends StatelessWidget {
   final List<AnalysisResult> results;
   final Function(String word, String tag) onWordTap;
+  final String? paragraphId; // Added to link flashcards to history entry
+  final String paragraphText; // The full paragraph text
 
   const AnalysisResultWidget({
     super.key,
     required this.results,
     required this.onWordTap,
+    this.paragraphId,
+    required this.paragraphText,
   });
+
+  void _addToFlashcards(BuildContext context, String word, String tag) async {
+    if (paragraphId == null) return;
+    
+    final flashcardService = FlashcardService();
+    
+    // Check if already exists
+    final exists = await flashcardService.exists(paragraphId!, word);
+    if (exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Энэ үг нь аль хэдийн лавлагаанд байна.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    
+    // Create flashcard
+    await flashcardService.createFlashcard(
+      paragraphId: paragraphId!,
+      paragraph: paragraphText,
+      word: word,
+      tag: tag,
+    );
+    
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_outline_rounded, color: Colors.white),
+              const SizedBox(width: 12),
+              Text('$word - Flashcard үүсгэв'),
+            ],
+          ),
+          backgroundColor: Colors.green.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +243,11 @@ class AnalysisResultWidget extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => onWordTap(morpheme.text, morpheme.tag),
+        onTap: () {
+          onWordTap(morpheme.text, morpheme.tag);
+          // Add long-press or double-tap to add to flashcards
+        },
+        onLongPress: () => _addToFlashcards(context, morpheme.text, morpheme.tag),
         borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -229,6 +284,12 @@ class AnalysisResultWidget extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.add_circle_outline_rounded,
+                size: 14,
+                color: tagColor.withOpacity(0.7),
               ),
             ],
           ),
