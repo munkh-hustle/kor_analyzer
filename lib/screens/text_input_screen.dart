@@ -99,7 +99,7 @@ class _TextInputScreenState extends State<TextInputScreen>
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: const Text(
-          'Korean Reader',
+          'Үг бүтэцлэгч',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -111,7 +111,7 @@ class _TextInputScreenState extends State<TextInputScreen>
                 MaterialPageRoute(builder: (context) => const SearchHistoryScreen()),
               );
             },
-            tooltip: '검색 기록',
+            tooltip: 'Хайлтын түүх',
           ),
           IconButton(
             icon: const Icon(Icons.history_rounded),
@@ -126,7 +126,7 @@ class _TextInputScreenState extends State<TextInputScreen>
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _clearText,
-            tooltip: '초기화',
+            tooltip: 'Дахин эхлүүлэх',
           ),
         ],
       ),
@@ -398,7 +398,7 @@ class _TextInputScreenState extends State<TextInputScreen>
           ),
           const SizedBox(height: 24),
           Text(
-            'Текстийг оруулаад дүн шинжилгээ хийх товчийг дарна уу.',
+            '✨✨✨',
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontSize: 16,
@@ -407,7 +407,7 @@ class _TextInputScreenState extends State<TextInputScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'Өгүүлбэрийн шинжилгээ болон толь бичгийн хайлт хийх боломжтой..',
+            '...',
             style: TextStyle(
               color: Theme.of(context).colorScheme.outline,
               fontSize: 14,
