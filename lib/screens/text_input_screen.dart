@@ -214,6 +214,10 @@ class _TextInputScreenState extends State<TextInputScreen>
                   );
                 }
 
+                if (provider.isDatabaseLoading) {
+                  return _buildDatabaseLoadingState(context, provider);
+                }
+
                 if (provider.isAnalyzing) {
                   return _buildLoadingState(context, 'шинжилгээ хийх...');
                 }
@@ -262,6 +266,78 @@ class _TextInputScreenState extends State<TextInputScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDatabaseLoadingState(BuildContext context, KoreanReaderProvider provider) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.download_rounded,
+                size: 64,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Толь бичиг ачааллаж байна...',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Файл: ${provider.loadedFilesCount}/${provider.totalFilesCount}',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.outline,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Бичлэг: ${provider.totalEntriesLoaded}',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.outline,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: provider.databaseLoadingProgress,
+                  minHeight: 8,
+                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '${(provider.databaseLoadingProgress * 100).toInt()}%',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -13,14 +13,34 @@ class KoreanReaderProvider extends ChangeNotifier {
   List<AnalysisResult> _currentResults = [];
   bool _isAnalyzing = false;
   final DictionaryService _dictionaryService = DictionaryService();
+  bool _isDatabaseLoading = false;
+  double _databaseLoadingProgress = 0.0;
+  int _loadedFilesCount = 0;
+  int _totalFilesCount = 0;
+  int _totalEntriesLoaded = 0;
 
   bool get isInitialized => _isInitialized;
   String get errorMessage => _errorMessage;
   List<AnalysisResult> get currentResults => _currentResults;
   bool get isAnalyzing => _isAnalyzing;
+  bool get isDatabaseLoading => _isDatabaseLoading;
+  double get databaseLoadingProgress => _databaseLoadingProgress;
+  int get loadedFilesCount => _loadedFilesCount;
+  int get totalFilesCount => _totalFilesCount;
+  int get totalEntriesLoaded => _totalEntriesLoaded;
 
   KoreanReaderProvider() {
+    _dictionaryService.onProgressChanged = _onDatabaseProgressChanged;
     initialize();
+  }
+
+  void _onDatabaseProgressChanged() {
+    _isDatabaseLoading = _dictionaryService.isLoading;
+    _databaseLoadingProgress = _dictionaryService.loadingProgress;
+    _loadedFilesCount = _dictionaryService.loadedFilesCount;
+    _totalFilesCount = _dictionaryService.totalFilesCount;
+    _totalEntriesLoaded = _dictionaryService.totalEntriesLoaded;
+    notifyListeners();
   }
 
   Future<void> initialize() async {
