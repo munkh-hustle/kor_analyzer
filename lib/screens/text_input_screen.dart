@@ -6,8 +6,12 @@ import '../widgets/analysis_result_widget.dart';
 import '../widgets/dictionary_popup.dart';
 import '../services/history_service.dart';
 import '../services/search_history_service.dart';
+import '../services/flashcard_service.dart';
 import 'history_screen.dart';
 import 'search_history_screen.dart';
+import 'flashcard_review_screen.dart';
+import 'streak_stats_screen.dart';
+import 'upcoming_review_screen.dart';
 
 class TextInputScreen extends StatefulWidget {
   const TextInputScreen({super.key});
@@ -19,10 +23,12 @@ class TextInputScreen extends StatefulWidget {
 class _TextInputScreenState extends State<TextInputScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
+  final FlashcardService _flashcardService = FlashcardService();
   bool _showResults = false;
   String? _currentParagraphId; // Store the current paragraph ID for flashcards
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  int _dueCardsCount = 0;
 
   @override
   void initState() {
@@ -35,6 +41,16 @@ class _TextInputScreenState extends State<TextInputScreen>
       parent: _animationController,
       curve: Curves.easeInOut,
     );
+    _loadDueCardsCount();
+  }
+
+  Future<void> _loadDueCardsCount() async {
+    final count = await _flashcardService.getDueCount();
+    if (mounted) {
+      setState(() {
+        _dueCardsCount = count;
+      });
+    }
   }
 
   @override
@@ -103,6 +119,68 @@ class _TextInputScreenState extends State<TextInputScreen>
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          // Streak Stats Button
+          IconButton(
+            icon: const Icon(Icons.local_fire_department_rounded),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const StreakStatsScreen()),
+              );
+            },
+            tooltip: 'Өдрийн цуврал',
+          ),
+          // Upcoming Reviews Button
+          IconButton(
+            icon: const Icon(Icons.calendar_view_month_rounded),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const UpcomingReviewScreen()),
+              ).then((_) => _loadDueCardsCount());
+            },
+            tooltip: 'Ирэх давталтууд',
+          ),
+          // Flashcard Review Button with Badge
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.school_rounded),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const FlashcardReviewScreen()),
+                  ).then((_) => _loadDueCardsCount());
+                },
+                tooltip: 'Flashcard Review',
+              ),
+              if (_dueCardsCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      '$_dueCardsCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.search_rounded),
             onPressed: () {
@@ -132,6 +210,103 @@ class _TextInputScreenState extends State<TextInputScreen>
       ),
       body: Column(
         children: [
+          // Flashcard Review Quick Access Card at Top
+          if (_dueCardsCount > 0)
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.secondary,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.school_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Давталт хийх цаг боллоо!',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$_dueCardsCount карт шинжлэх хүлээж байна',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const FlashcardReviewScreen()),
+                      ).then((_) => _loadDueCardsCount());
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Эхлэх',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          
           // Input section
           Container(
             padding: const EdgeInsets.all(20),
