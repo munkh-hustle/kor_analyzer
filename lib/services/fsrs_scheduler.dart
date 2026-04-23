@@ -219,7 +219,7 @@ class FSRSScheduler {
       }
     } else {
       // Easy - larger stability increase
-      double easyBonus = 1.0 + _w9 * (1.0 - currentDifficulty);
+      double easyBonus = 1.0 + _w9 * (1.0 - newDifficulty);
       newStability = currentStability * easyBonus;
     }
     
