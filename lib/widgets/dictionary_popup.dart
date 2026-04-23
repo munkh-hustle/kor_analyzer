@@ -590,7 +590,15 @@ class DictionaryPopup extends StatelessWidget {
 
   Widget _buildExamplesList(BuildContext context, String jsonStr, ColorScheme colorScheme) {
     try {
-      final List<dynamic> examplesList = json.decode(jsonStr);
+      // Try to parse as JSON array first
+      List<dynamic> examplesList;
+      try {
+        examplesList = json.decode(jsonStr);
+      } catch (e) {
+        // If JSON parsing fails, treat as newline-separated string
+        examplesList = jsonStr.split('\n').where((s) => s.trim().isNotEmpty).toList();
+      }
+      
       if (examplesList.isEmpty) {
         return Row(
           children: [
@@ -641,7 +649,7 @@ class DictionaryPopup extends StatelessWidget {
         }).toList(),
       );
     } catch (e) {
-      print('Error parsing examples JSON: $e');
+      print('Error parsing examples: $e');
       return Text(
         '예문을 불러올 수 없습니다.',
         style: TextStyle(
