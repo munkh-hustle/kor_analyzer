@@ -1,4 +1,6 @@
 // lib/widgets/analysis_result_widget.dart
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/analysis_result.dart';
@@ -52,7 +54,56 @@ class AnalysisResultWidget extends StatelessWidget {
       // Fetch definition from dictionary using the provider from context
       final provider = Provider.of<KoreanReaderProvider>(context, listen: false);
       final result = await provider.getDefinitionWithMultiLang(word, tag);
-      final definition = result?['definition'] as String?;
+      
+      // Get definition - prefer multilanList (Mongolian + English) if available
+      String? definition;
+      final multilanListJson = result?['multilanList'] as String?;
+      
+      if (multilanListJson != null && multilanListJson.isNotEmpty) {
+        // Parse multilanList to extract Mongolian and English definitions
+        try {
+          final multilanList = json.decode(multilanListJson) as List;
+          List<String> mnEnDefs = [];
+          
+          for (var item in multilanList) {
+            if (item is Map) {
+              final nationCodeName = item['nation_code_name']?.toString() ?? '';
+              final multiTranslation = item['multi_translation']?.toString() ?? '';
+              final multiDefinition = item['multi_definition']?.toString() ?? '';
+              
+              // Check for Mongolian or English
+              if (nationCodeName.contains('몽골') || nationCodeName.toLowerCase().contains('mongol')) {
+                if (multiTranslation.isNotEmpty) {
+                  mnEnDefs.add('🇲🇳 몽гол: $multiTranslation');
+                }
+                if (multiDefinition.isNotEmpty) {
+                  mnEnDefs.add('   Тодорхойлолт: $multiDefinition');
+                }
+              } else if (nationCodeName.contains('영어') || nationCodeName.toLowerCase().contains('english')) {
+                if (multiTranslation.isNotEmpty) {
+                  mnEnDefs.add('🇬🇧 English: $multiTranslation');
+                }
+                if (multiDefinition.isNotEmpty) {
+                  mnEnDefs.add('   Definition: $multiDefinition');
+                }
+              }
+            }
+          }
+          
+          if (mnEnDefs.isNotEmpty) {
+            definition = mnEnDefs.join('\n\n');
+          } else {
+            // Fallback to regular definition if no Mongolian/English found
+            definition = result?['definition'] as String?;
+          }
+        } catch (e) {
+          print('Error parsing multilanList: $e');
+          definition = result?['definition'] as String?;
+        }
+      } else {
+        // No multilanList, use regular definition
+        definition = result?['definition'] as String?;
+      }
       
       // Create flashcard with definition
       await flashcardService.createFlashcard(
