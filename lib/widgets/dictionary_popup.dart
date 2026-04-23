@@ -9,6 +9,9 @@ class DictionaryPopup extends StatelessWidget {
   final String? multilanListJson;
   final String? fullSenseInfoJson;
   final String? gubun;
+  final String? synonymsJson;
+  final String? antonymsJson;
+  final String? examplesJson;
 
   const DictionaryPopup({
     super.key,
@@ -18,6 +21,9 @@ class DictionaryPopup extends StatelessWidget {
     this.multilanListJson,
     this.fullSenseInfoJson,
     this.gubun,
+    this.synonymsJson,
+    this.antonymsJson,
+    this.examplesJson,
   });
 
   @override
@@ -270,11 +276,65 @@ class DictionaryPopup extends StatelessWidget {
 
                         const SizedBox(height: 24),
 
-                        // Usage examples
+                        // Synonyms
+                        if (synonymsJson != null && synonymsJson!.isNotEmpty) ...[
+                          _buildSectionHeader(context, '유의어', Icons.auto_awesome_rounded),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primaryContainer.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: colorScheme.outline.withOpacity(0.1),
+                              ),
+                            ),
+                            child: _buildWordList(context, synonymsJson!, colorScheme),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // Antonyms
+                        if (antonymsJson != null && antonymsJson!.isNotEmpty) ...[
+                          _buildSectionHeader(context, '반의어', Icons.swap_horiz_rounded),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: colorScheme.errorContainer.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: colorScheme.outline.withOpacity(0.1),
+                              ),
+                            ),
+                            child: _buildWordList(context, antonymsJson!, colorScheme),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // Usage examples from database
+                        if (examplesJson != null && examplesJson!.isNotEmpty) ...[
+                          _buildSectionHeader(context, '사용 예', Icons.format_quote_rounded),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: colorScheme.tertiaryContainer.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: colorScheme.outline.withOpacity(0.1),
+                              ),
+                            ),
+                            child: _buildExamplesList(context, examplesJson!, colorScheme),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // Usage examples from fullSenseInfo (examList2 and examList3)
                         if ((examList2 != null && examList2.isNotEmpty) ||
                             (examList3 != null && examList3.isNotEmpty)) ...[
-                          _buildSectionHeader(
-                              context, '사용 예', Icons.format_quote_rounded),
+                          if (examplesJson == null || examplesJson!.isEmpty)
+                            _buildSectionHeader(context, '사용 예', Icons.format_quote_rounded),
                           const SizedBox(height: 12),
                           Container(
                             padding: const EdgeInsets.all(16),
@@ -318,7 +378,7 @@ class DictionaryPopup extends StatelessWidget {
                               ],
                             ),
                           ),
-                        ] else ...[
+                        ] else if (examplesJson == null || examplesJson!.isEmpty) ...[
                           // Fallback placeholder if no examples
                           _buildSectionHeader(
                               context, '사용 예', Icons.format_quote_rounded),
@@ -491,5 +551,112 @@ class DictionaryPopup extends StatelessWidget {
       'JX': '보조사',
     };
     return descriptions[tag] ?? tag;
+  }
+
+  Widget _buildWordList(BuildContext context, String jsonStr, ColorScheme colorScheme) {
+    try {
+      final List<dynamic> wordList = json.decode(jsonStr);
+      if (wordList.isEmpty) {
+        return Text(
+          '등록된 단어가 없습니다.',
+          style: TextStyle(
+            fontSize: 14,
+            color: colorScheme.onSurfaceVariant,
+          ),
+        );
+      }
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: wordList.map((word) {
+          return Chip(
+            label: Text(word.toString()),
+            backgroundColor: colorScheme.surface,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          );
+        }).toList(),
+      );
+    } catch (e) {
+      print('Error parsing word list JSON: $e');
+      return Text(
+        '데이터를 불러올 수 없습니다.',
+        style: TextStyle(
+          fontSize: 14,
+          color: colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  Widget _buildExamplesList(BuildContext context, String jsonStr, ColorScheme colorScheme) {
+    try {
+      // Try to parse as JSON array first
+      List<dynamic> examplesList;
+      try {
+        examplesList = json.decode(jsonStr);
+      } catch (e) {
+        // If JSON parsing fails, treat as newline-separated string
+        examplesList = jsonStr.split('\n').where((s) => s.trim().isNotEmpty).toList();
+      }
+      
+      if (examplesList.isEmpty) {
+        return Row(
+          children: [
+            Icon(Icons.info_outline, color: colorScheme.outline, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '등록된 예문이 없습니다.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: examplesList.map((example) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 4, right: 10),
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: colorScheme.tertiary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    example.toString(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.6,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      );
+    } catch (e) {
+      print('Error parsing examples: $e');
+      return Text(
+        '예문을 불러올 수 없습니다.',
+        style: TextStyle(
+          fontSize: 14,
+          color: colorScheme.error,
+        ),
+      );
+    }
   }
 }

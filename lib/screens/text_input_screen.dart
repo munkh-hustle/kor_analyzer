@@ -430,6 +430,9 @@ class _TextInputScreenState extends State<TextInputScreen>
         multilanListJson: result?['multilanList'] as String?,
         fullSenseInfoJson: result?['fullSenseInfo'] as String?,
         gubun: result?['gubun'] as String?,
+        synonymsJson: result?['synonyms'] as String?,
+        antonymsJson: result?['antonyms'] as String?,
+        examplesJson: result?['examples'] as String?,
       ),
     );
   }
