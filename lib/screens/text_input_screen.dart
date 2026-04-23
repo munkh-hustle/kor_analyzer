@@ -444,6 +444,12 @@ class _TextInputScreenState extends State<TextInputScreen>
       displayWord,
       tag,
       definition: result?['definition'] as String?,
+      multilanListJson: result?['multilanList'] as String?,
+      fullSenseInfoJson: result?['fullSenseInfo'] as String?,
+      gubun: result?['gubun'] as String?,
+      synonymsJson: result?['synonyms'] as String?,
+      antonymsJson: result?['antonyms'] as String?,
+      examplesJson: result?['examples'] as String?,
     );
 
     // Unfocus any current focus to prevent keyboard from showing

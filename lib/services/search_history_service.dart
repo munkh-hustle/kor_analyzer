@@ -36,7 +36,13 @@ class SearchHistoryService {
         word TEXT NOT NULL,
         tag TEXT NOT NULL,
         timestamp INTEGER NOT NULL,
-        definition TEXT
+        definition TEXT,
+        multilanListJson TEXT,
+        fullSenseInfoJson TEXT,
+        gubun TEXT,
+        synonymsJson TEXT,
+        antonymsJson TEXT,
+        examplesJson TEXT
       )
     ''');
 
@@ -52,7 +58,17 @@ class SearchHistoryService {
   }
 
   /// Save a search entry - updates timestamp if word already exists
-  Future<void> saveSearch(String word, String tag, {String? definition}) async {
+  Future<void> saveSearch(
+    String word, 
+    String tag, {
+    String? definition,
+    String? multilanListJson,
+    String? fullSenseInfoJson,
+    String? gubun,
+    String? synonymsJson,
+    String? antonymsJson,
+    String? examplesJson,
+  }) async {
     final db = await database;
     final now = DateTime.now();
     final id = '${now.millisecondsSinceEpoch}_${word.hashCode}';
@@ -68,6 +84,12 @@ class SearchHistoryService {
           'timestamp': now.millisecondsSinceEpoch,
           'tag': tag,
           'definition': definition,
+          'multilanListJson': multilanListJson,
+          'fullSenseInfoJson': fullSenseInfoJson,
+          'gubun': gubun,
+          'synonymsJson': synonymsJson,
+          'antonymsJson': antonymsJson,
+          'examplesJson': examplesJson,
         },
         where: 'id = ?',
         whereArgs: [existingEntry.id],
@@ -80,6 +102,12 @@ class SearchHistoryService {
         tag: tag,
         timestamp: now,
         definition: definition,
+        multilanListJson: multilanListJson,
+        fullSenseInfoJson: fullSenseInfoJson,
+        gubun: gubun,
+        synonymsJson: synonymsJson,
+        antonymsJson: antonymsJson,
+        examplesJson: examplesJson,
       );
 
       await db.insert(
@@ -111,6 +139,12 @@ class SearchHistoryService {
         tag: maps[0]['tag'],
         timestamp: DateTime.fromMillisecondsSinceEpoch(maps[0]['timestamp']),
         definition: maps[0]['definition'],
+        multilanListJson: maps[0]['multilanListJson'],
+        fullSenseInfoJson: maps[0]['fullSenseInfoJson'],
+        gubun: maps[0]['gubun'],
+        synonymsJson: maps[0]['synonymsJson'],
+        antonymsJson: maps[0]['antonymsJson'],
+        examplesJson: maps[0]['examplesJson'],
       );
     }
     return null;
@@ -152,6 +186,12 @@ class SearchHistoryService {
         tag: maps[i]['tag'],
         timestamp: DateTime.fromMillisecondsSinceEpoch(maps[i]['timestamp']),
         definition: maps[i]['definition'],
+        multilanListJson: maps[i]['multilanListJson'],
+        fullSenseInfoJson: maps[i]['fullSenseInfoJson'],
+        gubun: maps[i]['gubun'],
+        synonymsJson: maps[i]['synonymsJson'],
+        antonymsJson: maps[i]['antonymsJson'],
+        examplesJson: maps[i]['examplesJson'],
       );
     });
   }

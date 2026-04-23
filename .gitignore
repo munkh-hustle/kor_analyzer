@@ -1,34 +1,37 @@
 ```
+# Build artifacts
+*.dart_tool/
+*.build/
+build/
+
 # Dependencies
 .pub/
-.buildlog
-.flutter-plugins
-.flutter-plugin-dependencies
-.packages
+pubspec.lock
 
-# Generated plugin code
-lib/generated/
-
-# Coverage
-coverage/
-
-# Temporary files
-*.tmp
-*.temp
+# Logs and temp files
 *.log
+*.tmp
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# IDE
-.idea/
+# Editor/IDE
 .vscode/
+.idea/
 *.swp
 *.swo
 
-# OS
+# OS generated files
 .DS_Store
 Thumbs.db
+
+# Coverage
+coverage/
+*.coverage
+
+# Distribution / packaging
+*.tar.gz
+*.zip
 ```

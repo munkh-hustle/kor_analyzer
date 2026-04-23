@@ -93,6 +93,12 @@ class _SearchHistoryScreenState extends State<SearchHistoryScreen> {
         word: entry.word,
         tag: entry.tag,
         definition: entry.definition,
+        multilanListJson: entry.multilanListJson,
+        fullSenseInfoJson: entry.fullSenseInfoJson,
+        gubun: entry.gubun,
+        synonymsJson: entry.synonymsJson,
+        antonymsJson: entry.antonymsJson,
+        examplesJson: entry.examplesJson,
       ),
     );
   }
